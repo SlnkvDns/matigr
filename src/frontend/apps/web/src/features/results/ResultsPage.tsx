@@ -1,36 +1,19 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router';
-import { createHttpClient } from '../../shared/api/http';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
-import { readStandings } from './standings';
-import type { Standings } from './standings';
+import { StandingsController } from './StandingsController';
 import './results.css';
 
 export function ResultsPage() {
   const [query, setQuery] = useSearchParams();
   const tournament = query.get('tournamentId') ?? import.meta.env.VITE_TOURNAMENT_ID ?? '';
   const [draft, setDraft] = useState(tournament);
-  const [snapshot, setSnapshot] = useState<Standings>();
-  const [error, setError] = useState<unknown>();
-  const [loading, setLoading] = useState(false);
-  const generation = useRef(0);
-  const cancel = useRef<AbortController | undefined>(undefined);
-  async function load() {
-    if (!tournament) return;
-    const revision = ++generation.current; cancel.current?.abort(); const controller = new AbortController(); cancel.current = controller;
-    setLoading(true); setError(undefined);
-    try {
-      const response = await createHttpClient('/api/v1/results').get<unknown>(`/tournaments/${encodeURIComponent(tournament)}/standings`, { signal: controller.signal });
-      const view = readStandings(response.data, tournament);
-      if (revision === generation.current && !controller.signal.aborted) setSnapshot(view);
-    } catch (e) { if (revision === generation.current && !controller.signal.aborted) setError(e); }
-    finally { if (revision === generation.current) setLoading(false); }
-  }
+  const controller = useMemo(() => new StandingsController(tournament), [tournament]);
+  const { snapshot, error, loading, connection } = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
   useEffect(() => {
-    setSnapshot(undefined); setDraft(tournament); void load();
-    return () => { ++generation.current; cancel.current?.abort(); };
-  }, [tournament]);
+    setDraft(tournament); controller.start(); return () => controller.stop();
+  }, [tournament, controller]);
   return (
     <Page title="Турнирная таблица" description="Результаты команд и баллы по задачам — в одном месте.">
       <p>Таблица доступна всем, без входа.</p>
@@ -38,7 +21,8 @@ export function ResultsPage() {
         <label>Идентификатор турнира <input value={draft} onChange={e => setDraft(e.target.value)} /></label>
         <button disabled={!draft.trim()} type="submit">Показать таблицу</button>
       </form>
-      {tournament && <button disabled={loading} onClick={() => void load()}>Обновить таблицу</button>}
+      {tournament && <button disabled={loading} onClick={() => void controller.refresh()}>Обновить таблицу</button>}
+      {tournament && connection === 'degraded' && <p role="status">Связь нестабильна. Проверяем обновления; доступна последняя полученная версия.</p>}
       {loading && <p role="status">Загрузка результатов…</p>}
       {error !== undefined && <ApiProblemNotice error={error} />}
       {snapshot && <div className="standings-scroll" role="region" aria-label="Результаты команд" tabIndex={0}>
