@@ -25,7 +25,7 @@ for (const [name, service] of Object.entries(cfg.services))
 const appealsApi = cfg.services['appeals-api'];
 const resultsApi = cfg.services['results-api'];
 assert.deepEqual(Object.keys(resultsApi.networks), ['results-data', 'transport']);
-assert.deepEqual(resultsApi.secrets.map(s => s.source), ['results_db_password', 'dev_issuer_public']);
+assert.deepEqual(resultsApi.secrets.map(s => s.source), ['results_db_password', 'results_broker_password', 'dev_issuer_public']);
 assert.ok(resultsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
 assert.deepEqual(Object.keys(appealsApi.networks), ['appeals-data', 'transport']);
 assert.deepEqual(appealsApi.secrets.map(s => s.source), ['appeals_db_password']);
@@ -129,7 +129,7 @@ assert.equal(appealsIdentity.status, 0);
 assert.match(appealsIdentity.stdout, /^Uid:\s+1654\s+1654\s+1654\s+1654/m);
 const resultsReady = await fetch('http://127.0.0.1:5102/health/ready', { signal: AbortSignal.timeout(5000) });
 assert.equal(resultsReady.status, 200);
-assert.deepEqual(await resultsReady.json(), { status: 'Ready', database: true });
+assert.deepEqual(await resultsReady.json(), { status: 'Ready', database: true, broker: true });
 const resultsIdentity = run(['exec', '-T', 'results-api', 'sh', '-c', 'grep "^Uid:" /proc/1/status']);
 assert.equal(resultsIdentity.status, 0);
 assert.match(resultsIdentity.stdout, /^Uid:\s+1654\s+1654\s+1654\s+1654/m);

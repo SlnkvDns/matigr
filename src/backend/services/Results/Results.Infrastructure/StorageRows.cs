@@ -80,6 +80,11 @@ internal sealed class OutboxRow
 }
 internal sealed class FailureRow
 {
+    public string RoutingKey { get; set; } = "";
+    public string PayloadHash { get; set; } = "";
+    public DateTimeOffset RecordedAt { get; set; } = DateTimeOffset.UtcNow;
+    public int RedriveCount { get; set; }
+    public DateTimeOffset? RedrivenAt { get; set; }
     public Guid FailureId { get; set; }
     public string Consumer { get; set; } = "";
     public Guid MessageId { get; set; }
@@ -88,4 +93,13 @@ internal sealed class FailureRow
     public string Envelope { get; set; } = "{}";
     public int Attempts { get; set; }
     public DateTimeOffset? NextAttemptAt { get; set; }
+}
+
+internal sealed class TransportRedriveRow
+{
+    public Guid RedriveId { get; set; }
+    public Guid FailureId { get; set; }
+    public Guid MessageId { get; set; }
+    public string PayloadHash { get; set; } = "";
+    public DateTimeOffset RedrivenAt { get; set; }
 }

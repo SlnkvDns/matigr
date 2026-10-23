@@ -40,7 +40,7 @@ namespace Results.Infrastructure.Migrations
 
                     b.Property<string>("Envelope")
                         .IsRequired()
-                        .HasColumnType("jsonb")
+                        .HasColumnType("text")
                         .HasColumnName("envelope");
 
                     b.Property<Guid>("MessageId")
@@ -51,10 +51,32 @@ namespace Results.Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("next_attempt_at");
 
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_hash");
+
                     b.Property<string>("ReasonCode")
                         .IsRequired()
                         .HasColumnType("text")
                         .HasColumnName("reason_code");
+
+                    b.Property<DateTimeOffset>("RecordedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("recorded_at");
+
+                    b.Property<int>("RedriveCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("redrive_count");
+
+                    b.Property<DateTimeOffset?>("RedrivenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redriven_at");
+
+                    b.Property<string>("RoutingKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("routing_key");
 
                     b.Property<string>("State")
                         .IsRequired()
@@ -64,6 +86,9 @@ namespace Results.Infrastructure.Migrations
                     b.HasKey("FailureId");
 
                     b.HasIndex("State", "NextAttemptAt");
+
+                    b.HasIndex("Consumer", "MessageId", "PayloadHash")
+                        .IsUnique();
 
                     b.ToTable("processing_failures", null, t =>
                         {
@@ -391,6 +416,37 @@ namespace Results.Infrastructure.Migrations
                     b.ToTable("tournament_teams", (string)null);
                 });
 
+            modelBuilder.Entity("Matigr.Results.Infrastructure.TransportRedriveRow", b =>
+                {
+                    b.Property<Guid>("RedriveId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("redrive_id");
+
+                    b.Property<Guid>("FailureId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("failure_id");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_hash");
+
+                    b.Property<DateTimeOffset>("RedrivenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redriven_at");
+
+                    b.HasKey("RedriveId");
+
+                    b.HasIndex("FailureId");
+
+                    b.ToTable("transport_redrives", (string)null);
+                });
+
             modelBuilder.Entity("Matigr.Results.Infrastructure.PublicationRow", b =>
                 {
                     b.HasOne("Matigr.Results.Infrastructure.ResultRow", null)
@@ -446,6 +502,15 @@ namespace Results.Infrastructure.Migrations
                     b.HasOne("Matigr.Results.Infrastructure.SnapshotRow", null)
                         .WithMany()
                         .HasForeignKey("TournamentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("Matigr.Results.Infrastructure.TransportRedriveRow", b =>
+                {
+                    b.HasOne("Matigr.Results.Infrastructure.FailureRow", null)
+                        .WithMany()
+                        .HasForeignKey("FailureId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
                 });

@@ -69,6 +69,7 @@ services:
       ASPNETCORE_HTTP_PORTS: '8080'
       Broker__Host: rabbitmq
       Broker__Username: checking
+      Transport__Enabled: 'true'
       Fixtures__Directory: /fixtures
       Identity__Issuer: matigr-local
       Identity__Audience: matigr-user-api
@@ -98,12 +99,15 @@ services:
       ASPNETCORE_ENVIRONMENT: Local
       ASPNETCORE_HTTP_PORTS: '8080'
       Fixtures__Directory: /fixtures
+      Transport__Enabled: 'true'
+      Broker__Host: rabbitmq
+      Broker__Username: results
       Identity__Issuer: matigr-local
       Identity__Audience: matigr-user-api
       Identity__PublicKeyPath: /run/secrets/dev_issuer_public
     volumes:
       - ../fixtures:/fixtures:ro
-    secrets: [results_db_password, dev_issuer_public]
+    secrets: [results_db_password, results_broker_password, dev_issuer_public]
     networks: [results-data, transport]
     ports: ['127.0.0.1:5102:8080']
     depends_on:
@@ -138,6 +142,7 @@ secrets:
   checking_db_password: { file: ../../.local/secrets/checking_db_password }
   results_db_password: { file: ../../.local/secrets/results_db_password }
   appeals_db_password: { file: ../../.local/secrets/appeals_db_password }
+  results_broker_password: { file: ../../.local/secrets/results_broker_password }
   checking_broker_password: { file: ../../.local/secrets/checking_broker_password }
   dev_issuer_private: { file: ../../.local/secrets/dev-issuer-private.pem }
   dev_issuer_public: { file: ../../.local/secrets/dev-issuer-public.pem }

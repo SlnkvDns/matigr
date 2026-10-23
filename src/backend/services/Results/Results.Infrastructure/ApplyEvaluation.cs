@@ -26,11 +26,11 @@ internal sealed class ApplyEvaluation(ResultsDbContext db) : IApplyEvaluation
         var evaluationId = e.CheckId.ToString("D");
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({evaluationId}, 0))", ct);
         var oldInbox = await db.Inbox.AsNoTracking().SingleOrDefaultAsync(x => x.Consumer == Consumer && x.MessageId == messageId, ct);
-        if (oldInbox is not null && oldInbox.PayloadHash != hash) throw new InvalidOperationException("Conflicting message identity.");
+        if (oldInbox is not null && oldInbox.PayloadHash != hash) throw new EvaluationIdentityConflictException();
         var previous = await db.Receipts.AsNoTracking().SingleOrDefaultAsync(x => x.EvaluationId == e.CheckId, ct);
         if (previous is not null)
         {
-            if (previous.SemanticHash != hash) throw new InvalidOperationException("Conflicting evaluation identity.");
+            if (previous.SemanticHash != hash) throw new EvaluationIdentityConflictException();
             if (oldInbox is null) db.Inbox.Add(new() { Consumer = Consumer, MessageId = messageId, PayloadHash = hash, ProcessedAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
             return new(previous.Status, previous.Response);

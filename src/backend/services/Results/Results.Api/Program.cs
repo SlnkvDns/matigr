@@ -3,6 +3,7 @@ using Matigr.Results.Application;
 using Matigr.Results.Infrastructure;
 using Matigr.Results.Api;
 using Microsoft.EntityFrameworkCore;
+using Matigr.Transport;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddResultsInfrastructure(builder.Configuration);
@@ -15,13 +16,14 @@ if (app.Environment.IsEnvironment("Local") && app.Configuration.GetValue<bool?>(
     await db.Database.MigrateAsync();
     await ResultFixtures.SeedAsync(db, app.Configuration["Fixtures:Directory"] ?? throw new InvalidOperationException("Fixtures:Directory required."));
 }
+if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;
 app.MapResultReads();
 app.MapGet("/health/live", () => HttpResults.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapGet("/health/ready", async (IResultsReadiness readiness, CancellationToken cancellationToken) =>
 {
     var state = await readiness.ProbeAsync(cancellationToken);
-    return HttpResults.Json(new { status = state.Ready ? "Ready" : "Unavailable", state.Database },
-        statusCode: state.Ready ? 200 : 503);
+    if (state.Broker is { } broker) return HttpResults.Json(new { status = state.Ready ? "Ready" : "Unavailable", state.Database, broker }, statusCode: state.Ready ? 200 : 503);
+    return HttpResults.Json(new { status = state.Ready ? "Ready" : "Unavailable", state.Database }, statusCode: state.Ready ? 200 : 503);
 }).AllowAnonymous();
 app.MapFallback(() => HttpResults.NotFound());
 app.Run();

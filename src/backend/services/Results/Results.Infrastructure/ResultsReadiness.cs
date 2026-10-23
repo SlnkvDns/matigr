@@ -3,7 +3,7 @@ using Npgsql;
 
 namespace Matigr.Results.Infrastructure;
 
-public sealed class ResultsReadiness(string connectionString) : IResultsReadiness
+public sealed class ResultsReadiness(string connectionString, Matigr.Transport.TransportHealth? transport = null) : IResultsReadiness
 {
     public async Task<ResultsReadinessState> ProbeAsync(CancellationToken cancellationToken)
     {
@@ -19,6 +19,6 @@ public sealed class ResultsReadiness(string connectionString) : IResultsReadines
         }
         catch (Exception e) when (e is NpgsqlException or OperationCanceledException) { }
 
-        return new ResultsReadinessState(database);
+        return new ResultsReadinessState(database, transport is null ? null : transport.Connected);
     }
 }

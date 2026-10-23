@@ -67,7 +67,10 @@ public sealed class ResultsDbContext(DbContextOptions<ResultsDbContext> options)
         m.Entity<OutboxRow>(e => { e.ToTable("outbox", t => t.HasCheckConstraint("ck_outbox_state", "attempts >= 0 AND ((status = 'Pending' AND sent_at IS NULL) OR (status = 'Sent' AND sent_at IS NOT NULL))"));
             e.HasKey(x => x.MessageId); e.Property(x => x.Envelope).HasColumnType("jsonb"); e.HasIndex(x => new { x.Status, x.NextAttemptAt }); });
         m.Entity<FailureRow>(e => { e.ToTable("processing_failures", t => t.HasCheckConstraint("ck_failure_state", "state IN ('Deferred','Quarantined','Resolved') AND attempts >= 0"));
-            e.HasKey(x => x.FailureId); e.Property(x => x.Envelope).HasColumnType("jsonb"); e.HasIndex(x => new { x.State, x.NextAttemptAt }); });
+            e.HasKey(x => x.FailureId); e.Property(x => x.Envelope).HasColumnType("text"); e.HasIndex(x => new { x.State, x.NextAttemptAt });
+            e.HasIndex(x => new { x.Consumer, x.MessageId, x.PayloadHash }).IsUnique(); });
+        m.Entity<TransportRedriveRow>(e => { e.ToTable("transport_redrives"); e.HasKey(x => x.RedriveId);
+            e.HasOne<FailureRow>().WithMany().HasForeignKey(x => x.FailureId).OnDelete(DeleteBehavior.Restrict); });
         foreach (var entity in m.Model.GetEntityTypes())
         foreach (var property in entity.GetProperties())
             property.SetColumnName(string.Concat(property.Name.Select((c, i) => char.IsUpper(c) && i > 0 ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString())));

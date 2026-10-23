@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:747cbade5bfd918a175ac32f8f1d931edec2c7d0d5397a3de72eaef1ac1f66d2 AS build
 WORKDIR /repo
+COPY src/backend/transport/ src/backend/transport/
 COPY global.json Directory.Build.props Directory.Packages.props ./
+COPY contracts/events/ contracts/events/
 COPY src/backend/services/Results/ src/backend/services/Results/
 RUN dotnet restore src/backend/services/Results/Results.Api/Results.Api.csproj --locked-mode
 RUN dotnet publish src/backend/services/Results/Results.Api/Results.Api.csproj --no-restore -c Release -o /app

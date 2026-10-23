@@ -34,7 +34,7 @@ public partial class StorageTests
         Assert.Equal(1, await db.Results.CountAsync(x => x.TournamentId == e.Key.TournamentId));
         Assert.Equal(1, await db.Publications.CountAsync(x => x.ResultId == db.Results.Where(r => r.TournamentId == e.Key.TournamentId).Select(r => r.ResultId).First()));
         Assert.Equal(1, (await db.Snapshots.SingleAsync(x => x.TournamentId == e.Key.TournamentId)).Version);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => work.InitialAsync(e with { Outcome = Outcome.Incorrect }, Guid.NewGuid(), "bad"));
+        await Assert.ThrowsAsync<Matigr.Results.Application.EvaluationIdentityConflictException>(() => work.InitialAsync(e with { Outcome = Outcome.Incorrect }, Guid.NewGuid(), "bad"));
     }
     [Fact]
     public async Task Concurrent_initials_have_one_publication_and_two_tasks_both_contribute()
