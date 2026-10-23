@@ -10,6 +10,7 @@ public sealed class IdentityTestFiles : IDisposable
     private readonly string directory = Path.Combine(Path.GetTempPath(), "matigr-auth-" + Guid.NewGuid());
     public string PublicKeyPath => Path.Combine(directory, "public.pem");
     public string PrivateKeyPath => Path.Combine(directory, "private.pem");
+    public string StorageKeyPath => Path.Combine(directory, "storage.key");
     public string FixturesDirectory { get; }
     public const string TournamentId = "0344e06b-4ea1-582e-bd91-e832719773f2";
     public const string JuryId = "6b8e3a04-ab14-5bdd-92cc-4a767e67f29b";
@@ -24,6 +25,7 @@ public sealed class IdentityTestFiles : IDisposable
         using var rsa = RSA.Create(3072);
         File.WriteAllText(PrivateKeyPath, rsa.ExportPkcs8PrivateKeyPem());
         File.WriteAllText(PublicKeyPath, rsa.ExportSubjectPublicKeyInfoPem());
+        File.WriteAllText(StorageKeyPath, Convert.ToHexString(RandomNumberGenerator.GetBytes(32)));
     }
 
     public Dictionary<string, string?> Settings => new()
@@ -31,7 +33,9 @@ public sealed class IdentityTestFiles : IDisposable
         ["Identity:Issuer"] = "matigr-local", ["Identity:Audience"] = "matigr-user-api",
         ["Identity:PublicKeyPath"] = PublicKeyPath,
         ["DevIdentity:PrivateKeyPath"] = PrivateKeyPath, ["DevIdentity:LifetimeSeconds"] = "3600",
-        ["Fixtures:Directory"] = FixturesDirectory
+        ["Fixtures:Directory"] = FixturesDirectory,
+        ["StorageProtection:KeyPath"] = StorageKeyPath,
+        ["Storage:ApplyMigrations"] = "false"
     };
 
     public WebApplicationFactory<Program> Factory(string environment = "Test", Dictionary<string, string?>? overrides = null) =>
@@ -46,6 +50,7 @@ public sealed class IdentityTestFiles : IDisposable
     {
         File.Delete(PrivateKeyPath);
         File.Delete(PublicKeyPath);
+        File.Delete(StorageKeyPath);
         Directory.Delete(directory);
     }
 }

@@ -29,6 +29,8 @@ dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
 
 В CI те же команды. Lock-файлы отслеживаются Git. Ветка реализации — `codex/implementation-v0`; изменения фиксируются отдельными коммитами по проверенным шагам. Текущие health endpoints не означают готовность бизнес-сценариев V1–V6.
 
+Проверка хранения Checking на отдельной PostgreSQL: `node scripts/check-checking-storage.mjs` после подготовки fixtures/ключа. Команда создаёт и удаляет изолированный тестовый Compose, проверяет миграции/constraints/CAS и восстановление capability отдельным процессом. [Границы хранения и запуск](src/backend/services/Checking/Checking.Infrastructure/Storage/README.md).
+
 ## Контракты
 
 [OpenAPI Checking](contracts/http/checking/openapi.json) и [JSON Schema сообщений](contracts/README.md) описывают согласованный интерфейс отдельно от доменных моделей. Проверка: `npm run test:contracts` после `npm ci`. Она включена в общую команду PowerShell и CI. В CHK-BE-04 реализованы [dev-выбор/profile, JWT и серверные права](contracts/authentication.md); бизнес-обработчики остаются CHK-BE-05/06. Проверки реальных отправителей/потребителей и брокера — отдельные задачи CHK-INT-02–04.
@@ -52,7 +54,7 @@ node scripts/check-infrastructure.mjs
 node scripts/check-identity.mjs --restart
 ```
 
-Три PostgreSQL не публикуют порты хоста и используют отдельные сети, volumes и credentials. Локальная проверка проверяет все 6 запретов чужих credentials, durable bindings RabbitMQ и готовность Checking. Отдельных API Results/Appeals пока нет. Checking слушает `http://127.0.0.1:5101`, RabbitMQ management — `http://127.0.0.1:15672`; пароли случайны, находятся в игнорируемом `.local/secrets`. Приложение после чтения Compose secrets запускается как непривилегированный `app`.
+Три PostgreSQL не публикуют порты хоста и используют отдельные сети, volumes и credentials. Локальная проверка проверяет все 6 запретов чужих credentials, durable bindings RabbitMQ и готовность Checking. Compose запускает API Checking и Appeals; Results пока представлен своей БД и каркасом сервиса. Checking слушает `http://127.0.0.1:5101`, RabbitMQ management — `http://127.0.0.1:15672`; пароли случайны, находятся в игнорируемом `.local/secrets`. Приложение после чтения Compose secrets запускается как непривилегированный `app`.
 
 Остановить контейнеры с сохранением данных: `docker compose -f infra/compose/compose.yaml down`. Не удаляйте volumes/секреты для обычного перезапуска.
 

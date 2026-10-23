@@ -16,8 +16,12 @@ assert.equal(cfgResult.status, 0, cfgResult.stderr);
 const cfg = JSON.parse(cfgResult.stdout);
 assert.ok(cfg.services['checking-api'].volumes.some(v => v.target === '/fixtures' && v.read_only));
 assert.ok(cfg.services['checking-api'].secrets.some(s => s.source === 'dev_issuer_private'));
+assert.ok(cfg.services['checking-api'].secrets.some(s => s.source === 'capability_protection_key'));
 for (const [name, service] of Object.entries(cfg.services))
-  if (name !== 'checking-api') assert.ok(!(service.secrets ?? []).some(s => s.source === 'dev_issuer_private'));
+  if (name !== 'checking-api') {
+    assert.ok(!(service.secrets ?? []).some(s => s.source === 'dev_issuer_private'));
+    assert.ok(!(service.secrets ?? []).some(s => s.source === 'capability_protection_key'));
+  }
 const appealsApi = cfg.services['appeals-api'];
 assert.deepEqual(Object.keys(appealsApi.networks), ['appeals-data', 'transport']);
 assert.deepEqual(appealsApi.secrets.map(s => s.source), ['appeals_db_password']);
@@ -67,6 +71,12 @@ for (const service of ['checking', 'results', 'appeals']) {
 const response = await fetch('http://127.0.0.1:5101/health/ready', { signal: AbortSignal.timeout(5000) });
 assert.equal(response.status, 200);
 assert.deepEqual(await response.json(), { status: 'Ready', database: true, broker: true });
+const checkingPassword = (await readFile(path.join(root, '.local/secrets/checking_db_password'), 'utf8')).trim();
+const checkingStorage = run(['exec', '-T', 'checking-db', 'sh', '-c',
+  'read -r PGPASSWORD; export PGPASSWORD; exec psql -h 127.0.0.1 -U checking_app -d checking_db -At -v ON_ERROR_STOP=1'],
+`${checkingPassword}\nSELECT count(*) FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261023171035_InitialCheckingStorage';\nSELECT count(*) FROM pg_indexes WHERE tablename = 'assignments' AND indexdef LIKE '%UNIQUE%' AND indexdef LIKE '%Active%';`);
+assert.equal(checkingStorage.status, 0, checkingStorage.stderr);
+assert.equal(checkingStorage.stdout.trim(), '1\n2', 'Checking migration and both Active constraints must exist');
 const fixtureHash = run(['exec', '-T', 'checking-api', 'sha256sum', '/fixtures/manifest.json']);
 assert.equal(fixtureHash.status, 0);
 assert.equal(fixtureHash.stdout.split(/\s/)[0], (await readFile(path.join(root, 'infra/fixtures/manifest.sha256'), 'utf8')).trim());

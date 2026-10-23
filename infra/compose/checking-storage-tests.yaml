@@ -1,0 +1,31 @@
+name: matigr-checking-storage-tests
+services:
+  database:
+    image: postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: checking_storage_test
+      POSTGRES_USER: checking_storage_test
+      POSTGRES_PASSWORD: isolated-test-only
+    tmpfs: [/var/lib/postgresql]
+    networks: [storage-test]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U checking_storage_test -d checking_storage_test']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  tests:
+    image: matigr-checking-storage-tests:chk-be-02
+    build:
+      context: ../..
+      dockerfile: infra/compose/Checking.StorageTests.Dockerfile
+    environment:
+      ConnectionStrings__CheckingStorageTest: Host=database;Database=checking_storage_test;Username=checking_storage_test;Password=isolated-test-only
+      StorageProtection__KeyPath: /run/secrets/storage_key
+    secrets: [storage_key]
+    networks: [storage-test]
+    depends_on:
+      database: { condition: service_healthy }
+secrets:
+  storage_key: { file: ../../.local/secrets/capability-protection-key }
+networks:
+  storage-test: { internal: true }

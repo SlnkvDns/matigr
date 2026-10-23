@@ -75,9 +75,10 @@ services:
       Identity__PublicKeyPath: /run/matigr-identity/public.pem
       DevIdentity__PrivateKeyPath: /run/matigr-identity/private.pem
       DevIdentity__LifetimeSeconds: '3600'
+      StorageProtection__KeyPath: /run/matigr-identity/storage.key
     volumes:
       - ../fixtures:/fixtures:ro
-    secrets: [checking_db_password, checking_broker_password, dev_issuer_private, dev_issuer_public]
+    secrets: [checking_db_password, checking_broker_password, dev_issuer_private, dev_issuer_public, capability_protection_key]
     networks: [checking-data, transport]
     ports: ['127.0.0.1:5101:8080']
     depends_on:
@@ -116,6 +117,7 @@ secrets:
   checking_broker_password: { file: ../../.local/secrets/checking_broker_password }
   dev_issuer_private: { file: ../../.local/secrets/dev-issuer-private.pem }
   dev_issuer_public: { file: ../../.local/secrets/dev-issuer-public.pem }
+  capability_protection_key: { file: ../../.local/secrets/capability-protection-key }
 networks:
   checking-data: { internal: true }
   results-data: { internal: true }

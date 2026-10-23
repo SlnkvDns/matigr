@@ -35,6 +35,9 @@ jobs:
           node-version-file: .node-version
       - run: node scripts/init-local.mjs
       - run: node scripts/prepare-fixtures.mjs
+      - run: node scripts/check-checking-storage.mjs
+      - if: always()
+        run: docker compose -p matigr-checking-storage-tests -f infra/compose/checking-storage-tests.yaml down
       - run: docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
       - run: node scripts/check-infrastructure.mjs
       - run: npm ci --ignore-scripts --no-audit --no-fund

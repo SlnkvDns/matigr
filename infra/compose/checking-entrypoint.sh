@@ -8,4 +8,5 @@ export Broker__Password="$(cat /run/secrets/checking_broker_password)"
 install -d -m 700 -o "$APP_UID" -g "$APP_UID" /run/matigr-identity
 install -m 600 -o "$APP_UID" -g "$APP_UID" /run/secrets/dev_issuer_public /run/matigr-identity/public.pem
 install -m 600 -o "$APP_UID" -g "$APP_UID" /run/secrets/dev_issuer_private /run/matigr-identity/private.pem
+install -m 600 -o "$APP_UID" -g "$APP_UID" /run/secrets/capability_protection_key /run/matigr-identity/storage.key
 exec setpriv --reuid="$APP_UID" --regid="$APP_UID" --clear-groups --no-new-privs dotnet Checking.Api.dll
