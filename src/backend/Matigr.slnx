@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/Checking/">
+    <Project Path="services/Checking/Checking.Api/Checking.Api.csproj" />
+    <Project Path="services/Checking/Checking.Application/Checking.Application.csproj" />
+    <Project Path="services/Checking/Checking.Domain/Checking.Domain.csproj" />
+    <Project Path="services/Checking/Checking.Infrastructure/Checking.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Checking/">
+    <Project Path="../../tests/backend/Checking/Checking.Tests/Checking.Tests.csproj" />
+    <Project Path="../../tests/backend/Checking/Checking.Api.Tests/Checking.Api.Tests.csproj" />
+  </Folder>
+</Solution>
