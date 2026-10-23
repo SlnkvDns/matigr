@@ -14,6 +14,8 @@ jobs:
         with:
           node-version-file: .node-version
       - run: node scripts/check-architecture.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:contracts
       - run: node scripts/check-docs.mjs
       - run: node scripts/prepare-fixtures.mjs
       - run: node --test tests/fixtures/fixtures.test.mjs

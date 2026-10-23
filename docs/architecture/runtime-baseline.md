@@ -19,6 +19,7 @@
 | Testing Library React / jest-dom | 16.3.3 / 7.0.1 | Node >=18 / >=22 |
 | Playwright | 1.64.1 | Будущий E2E; Node >=20, браузеры устанавливаются вместе с этой версией |
 | xUnit / VS adapter / Test SDK | 2.9.3 / 3.1.5 / 18.11.0 | Точный совместимый VSTest-профиль, без тестов-заглушек |
+| OpenAPI / JSON Schema validators | Swagger Parser 12.1.0 / Ajv 8.17.1 / ajv-formats 3.0.1 | CHK-INT-01: OpenAPI 3.1.1 / Draft 2020-12, strict schema compilation, проверка format без приведения типов. Точные версии и root package-lock.json |
 
 Версии NuGet проверены по официальному flat-container API, npm — по registry.npmjs.org. Прямые пакеты закрепляются без диапазонов, транзитивные — в packages.lock.json/package-lock.json. Образы закреплены patch-тегами и digest в Compose/Dockerfile; их доступность и запуск проверены в CHK-INF-03. CI actions закреплены commit SHA официальных репозиториев. Обновление версий — отдельное изменение с повторной сборкой и проверкой совместимости.
 

@@ -57,7 +57,7 @@ Completed неизменяем; новая оценка — отдельный A
 
 ## 4. REST API
 
-Все маршруты с `/api/v1/checking`, кроме dev-issuer. DTO и OpenAPI будут отдельны от доменных классов.
+Все маршруты с `/api/v1/checking`, кроме dev-issuer. Форма HTTP DTO опубликована отдельно от доменных классов в [Checking OpenAPI](../../../contracts/http/checking/openapi.json), условные поля сообщений — в [JSON Schema](../../../contracts/README.md) (CHK-INT-01). Исполняемые бизнес-обработчики и .NET DTO/serialization adapters относятся к последующим backend/integration-задачам.
 
 | Метод и путь | Права и вход | Результат |
 | --- | --- | --- |

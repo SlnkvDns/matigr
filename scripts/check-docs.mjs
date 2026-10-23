@@ -8,6 +8,7 @@ async function files(directory) {
   return (await Promise.all(entries.map(e => e.isDirectory() ? files(path.join(directory, e.name)) : [path.join(directory, e.name)]))).flat();
 }
 const docs = [...(await files(path.join(root, 'docs'))).filter(f => f.endsWith('.md')),
+  ...(await files(path.join(root, 'contracts'))).filter(f => f.endsWith('.md')),
   path.join(root, 'README.md'), path.join(root, 'AGENTS.md'), path.join(root, 'infra/fixtures/README.md')];
 const tasks = new Map();
 for (const file of docs) {

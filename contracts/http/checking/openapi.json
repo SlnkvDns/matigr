@@ -1,0 +1,1470 @@
+{
+  "openapi": "3.1.1",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Matigr Checking API",
+    "version": "1.0.0",
+    "description": "Contract-first API for approved MVP. Only health routes are currently implemented; business routes are delivered in CHK-BE-04–06. No intake/upload/QR/tournament CRUD. Private routes verify issuer/audience/signature and server-side rights. Successful HTTP replays precede version/state validation after authentication/authorization."
+  },
+  "servers": [
+    {
+      "url": "/"
+    }
+  ],
+  "security": [
+    {
+      "UserBearer": []
+    }
+  ],
+  "tags": [
+    {
+      "name": "Checking"
+    },
+    {
+      "name": "Development"
+    },
+    {
+      "name": "Health"
+    }
+  ],
+  "paths": {
+    "/api/v1/checking/queues": {
+      "get": {
+        "operationId": "getCheckingQueue",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Read-only queue metadata, ordered by createdAt then checkId. It does not reserve work or prove current availability. Senior queue requires Senior scope. Technical cursor pagination has no business quota.",
+        "x-permission": "Jury in tournament scope",
+        "responses": {
+          "200": {
+            "description": "Visible queue page",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueuePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "name": "tournamentId",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          },
+          {
+            "name": "queue",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "$ref": "#/components/schemas/Queue"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        ]
+      }
+    },
+    "/api/v1/checking/me/assignments/next": {
+      "post": {
+        "operationId": "takeNextCheck",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Atomically assign the next available Check to the authenticated subject. Reviewer identity is not a body field. Shared occupancy across all tournaments/queues/rechecks. No If-Match: server selects the Check. Empty queue is 204; existing occupancy is 409 ReviewerBusy. A replay preserves the original outcome even if the queue/current state has changed.",
+        "x-permission": "Jury in tournament scope; queue=senior additionally requires Senior",
+        "responses": {
+          "200": {
+            "description": "Committed assignment, before Results processing",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAssignment"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "No available work; no response body.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TakeNextRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checking/me/assignment": {
+      "get": {
+        "operationId": "getMyAssignment",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Current subject assignment across all tournaments. No filter may hide an existing assignment. Closing the page, disconnecting, or waiting does not release it.",
+        "x-permission": "Jury in tournament scope",
+        "responses": {
+          "200": {
+            "description": "Current assignment and owner-only capability",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MyAssignment"
+                }
+              }
+            }
+          },
+          "204": {
+            "description": "Subject has no active assignment; no body.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": []
+      }
+    },
+    "/api/v1/checking/checks/{checkId}": {
+      "get": {
+        "operationId": "getCheck",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Minimal Check snapshot for the owner or authorized jury scope; never includes capability, materialRef, or public history. The current owner obtains capability from GET /me/assignment.",
+        "x-permission": "Jury in tournament scope",
+        "responses": {
+          "200": {
+            "description": "Check snapshot",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CheckView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CheckId"
+          }
+        ]
+      }
+    },
+    "/api/v1/checking/checks/{checkId}/material": {
+      "get": {
+        "operationId": "getCheckMaterial",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Read only the prepared material for the authenticated current assignment owner. No user path/URL input. Missing/unavailable material is an observable read failure, never Incorrect. Responses are private/no-store.",
+        "x-permission": "Authenticated current assignment owner",
+        "responses": {
+          "200": {
+            "description": "Prepared material bytes; not JSON and not a public material URL.",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              }
+            },
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CheckId"
+          }
+        ]
+      }
+    },
+    "/api/v1/checking/checks/{checkId}/complete": {
+      "post": {
+        "operationId": "completeCheck",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Save binary verdict, close assignment and persist outbox atomically. The reviewer is free after commit; this response does not promise Results has processed/published it. SeniorAssigned completion uses SeniorEscalation.",
+        "x-permission": "Authenticated current assignment owner; valid assignmentId and capability",
+        "responses": {
+          "200": {
+            "description": "Committed Check transition",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompletedCheckView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "428": {
+            "$ref": "#/components/responses/PreconditionRequired"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CheckId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompleteRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/checking/checks/{checkId}/refuse": {
+      "post": {
+        "operationId": "refuseCheck",
+        "tags": [
+          "Checking"
+        ],
+        "description": "Refuse only Assigned work: atomically close assignment, revoke capability, release reviewer and enqueue the SAME Check as SeniorQueued. This also applies to an appeal Check. SeniorAssigned cannot refuse again; no automatic release/return-to-general route.",
+        "x-permission": "Authenticated current assignment owner; valid assignmentId and capability",
+        "responses": {
+          "200": {
+            "description": "Committed Check transition",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              },
+              "ETag": {
+                "$ref": "#/components/headers/ETag"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SeniorQueuedCheckView"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "404": {
+            "$ref": "#/components/responses/NotFound"
+          },
+          "409": {
+            "$ref": "#/components/responses/Conflict"
+          },
+          "412": {
+            "$ref": "#/components/responses/PreconditionFailed"
+          },
+          "428": {
+            "$ref": "#/components/responses/PreconditionRequired"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          }
+        },
+        "parameters": [
+          {
+            "$ref": "#/components/parameters/CheckId"
+          },
+          {
+            "$ref": "#/components/parameters/IdempotencyKey"
+          },
+          {
+            "$ref": "#/components/parameters/IfMatch"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RefuseRequest"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/dev/v1/session/select": {
+      "post": {
+        "operationId": "selectDevSession",
+        "tags": [
+          "Development"
+        ],
+        "description": "Local/test-only stateless credential issuance, not a business state mutation. Disabled (404) outside Local/Test. The server resolves testSubjectId from fixtures and selects stable subject/roles/team/tournament scope; no browser role/team/scope fields. Signed credential verified by every API; lifetime is configured by the issuer, not fixed by this contract. User credentials cannot replace service credentials. This adapter is replaced by real identity later without changing internal subjectId.",
+        "x-permission": "Explicit Local/Test environment only",
+        "responses": {
+          "200": {
+            "description": "Signed credential and server-approved profile",
+            "headers": {
+              "Cache-Control": {
+                "$ref": "#/components/headers/PrivateCache"
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DevSession"
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "$ref": "#/components/responses/Forbidden"
+          },
+          "503": {
+            "$ref": "#/components/responses/Unavailable"
+          },
+          "404": {
+            "description": "Dev route is disabled, or the fixture subject is unavailable.",
+            "content": {
+              "application/problem+json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProblemDetails"
+                }
+              }
+            }
+          }
+        },
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SessionSelectRequest"
+              }
+            }
+          }
+        },
+        "security": []
+      }
+    },
+    "/health/live": {
+      "get": {
+        "operationId": "getLiveness",
+        "tags": [
+          "Health"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Process alive",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Liveness"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/health/ready": {
+      "get": {
+        "operationId": "getReadiness",
+        "tags": [
+          "Health"
+        ],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Database and broker available",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Database or broker unavailable; not a ProblemDetails business response",
+            "headers": {},
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Readiness"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT",
+        "description": "Signed user credential. The server validates issuer, audience, signature, subject and scope; browser role/team headers are never authoritative."
+      }
+    },
+    "schemas": {
+      "OpaqueId": {
+        "type": "string",
+        "minLength": 1,
+        "description": "Opaque identifier. Do not derive rights or ordering from its value."
+      },
+      "Version": {
+        "type": "string",
+        "pattern": "^(0|[1-9][0-9]*)$",
+        "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+      },
+      "PositiveVersion": {
+        "type": "string",
+        "pattern": "^[1-9][0-9]*$",
+        "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+      },
+      "UtcTimestamp": {
+        "type": "string",
+        "format": "date-time",
+        "pattern": "Z$",
+        "description": "UTC; not an ordering guarantee."
+      },
+      "Outcome": {
+        "type": "string",
+        "enum": [
+          "Correct",
+          "Incorrect"
+        ]
+      },
+      "Kind": {
+        "type": "string",
+        "enum": [
+          "Initial",
+          "Appeal"
+        ]
+      },
+      "DecisionOrigin": {
+        "type": "string",
+        "enum": [
+          "OrdinaryReview",
+          "AppealReview",
+          "SeniorEscalation"
+        ]
+      },
+      "Queue": {
+        "type": "string",
+        "enum": [
+          "general",
+          "senior"
+        ]
+      },
+      "ETag": {
+        "type": "string",
+        "pattern": "^\"[1-9][0-9]*\"$",
+        "examples": [
+          "\"3\""
+        ]
+      },
+      "CheckView": {
+        "type": "object",
+        "properties": {
+          "checkId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "solutionId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "materialVersionId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "tournamentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "taskId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Kind"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "Queued",
+              "Assigned",
+              "SeniorQueued",
+              "SeniorAssigned",
+              "Completed"
+            ]
+          },
+          "version": {
+            "$ref": "#/components/schemas/PositiveVersion"
+          },
+          "reviewRevision": {
+            "$ref": "#/components/schemas/PositiveVersion"
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/UtcTimestamp"
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/Outcome"
+          },
+          "decisionOrigin": {
+            "$ref": "#/components/schemas/DecisionOrigin"
+          }
+        },
+        "required": [
+          "checkId",
+          "solutionId",
+          "materialVersionId",
+          "tournamentId",
+          "teamId",
+          "taskId",
+          "kind",
+          "state",
+          "version",
+          "reviewRevision",
+          "createdAt"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "state": {
+                  "const": "Completed"
+                }
+              },
+              "required": [
+                "state"
+              ]
+            },
+            "then": {
+              "required": [
+                "outcome",
+                "decisionOrigin"
+              ]
+            },
+            "else": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "outcome"
+                    ]
+                  },
+                  {
+                    "required": [
+                      "decisionOrigin"
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+          {
+            "if": {
+              "properties": {
+                "kind": {
+                  "const": "Initial"
+                }
+              },
+              "required": [
+                "kind"
+              ]
+            },
+            "then": {
+              "properties": {
+                "decisionOrigin": {
+                  "enum": [
+                    "OrdinaryReview",
+                    "SeniorEscalation"
+                  ]
+                }
+              }
+            },
+            "else": {
+              "properties": {
+                "decisionOrigin": {
+                  "enum": [
+                    "AppealReview",
+                    "SeniorEscalation"
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      },
+      "AssignedCheckView": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CheckView"
+          },
+          {
+            "properties": {
+              "state": {
+                "enum": [
+                  "Assigned",
+                  "SeniorAssigned"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "CompletedCheckView": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CheckView"
+          },
+          {
+            "properties": {
+              "state": {
+                "const": "Completed"
+              }
+            }
+          }
+        ]
+      },
+      "SeniorQueuedCheckView": {
+        "type": "object",
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/CheckView"
+          },
+          {
+            "properties": {
+              "state": {
+                "const": "SeniorQueued"
+              }
+            }
+          }
+        ]
+      },
+      "MyAssignment": {
+        "type": "object",
+        "properties": {
+          "check": {
+            "$ref": "#/components/schemas/AssignedCheckView"
+          },
+          "assignmentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "reviewerId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "startedAt": {
+            "$ref": "#/components/schemas/UtcTimestamp"
+          },
+          "capability": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Secret capability; returned only to the authenticated current owner. Never log or send to RabbitMQ."
+          }
+        },
+        "required": [
+          "check",
+          "assignmentId",
+          "reviewerId",
+          "startedAt",
+          "capability"
+        ],
+        "additionalProperties": false
+      },
+      "TakeNextRequest": {
+        "type": "object",
+        "properties": {
+          "tournamentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "queue": {
+            "$ref": "#/components/schemas/Queue"
+          }
+        },
+        "required": [
+          "tournamentId",
+          "queue"
+        ],
+        "additionalProperties": false
+      },
+      "CompleteRequest": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "capability": {
+            "type": "string",
+            "minLength": 1
+          },
+          "outcome": {
+            "$ref": "#/components/schemas/Outcome"
+          }
+        },
+        "required": [
+          "assignmentId",
+          "capability",
+          "outcome"
+        ],
+        "additionalProperties": false
+      },
+      "RefuseRequest": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "capability": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "required": [
+          "assignmentId",
+          "capability"
+        ],
+        "additionalProperties": false
+      },
+      "QueueItem": {
+        "type": "object",
+        "properties": {
+          "checkId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "solutionId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "tournamentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "taskId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/Kind"
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "Queued",
+              "SeniorQueued"
+            ]
+          },
+          "createdAt": {
+            "$ref": "#/components/schemas/UtcTimestamp"
+          }
+        },
+        "required": [
+          "checkId",
+          "solutionId",
+          "tournamentId",
+          "teamId",
+          "taskId",
+          "kind",
+          "state",
+          "createdAt"
+        ],
+        "additionalProperties": false
+      },
+      "QueuePage": {
+        "type": "object",
+        "properties": {
+          "tournamentId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "queue": {
+            "$ref": "#/components/schemas/Queue"
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QueueItem"
+            }
+          },
+          "nextCursor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "minLength": 1
+          }
+        },
+        "required": [
+          "tournamentId",
+          "queue",
+          "items",
+          "nextCursor"
+        ],
+        "additionalProperties": false
+      },
+      "SessionSelectRequest": {
+        "type": "object",
+        "properties": {
+          "testSubjectId": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Server-side fixture key. Roles/team/scope cannot be supplied by the browser."
+          }
+        },
+        "required": [
+          "testSubjectId"
+        ],
+        "additionalProperties": false
+      },
+      "DevProfile": {
+        "type": "object",
+        "properties": {
+          "subjectId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          },
+          "displayName": {
+            "type": "string"
+          },
+          "roles": {
+            "type": "array",
+            "minItems": 1,
+            "uniqueItems": true,
+            "items": {
+              "type": "string",
+              "enum": [
+                "Jury",
+                "Senior",
+                "Team",
+                "Organizer"
+              ]
+            }
+          },
+          "tournamentIds": {
+            "type": "array",
+            "uniqueItems": true,
+            "items": {
+              "$ref": "#/components/schemas/OpaqueId"
+            }
+          },
+          "teamId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          }
+        },
+        "required": [
+          "subjectId",
+          "displayName",
+          "roles",
+          "tournamentIds"
+        ],
+        "additionalProperties": false,
+        "allOf": [
+          {
+            "if": {
+              "properties": {
+                "roles": {
+                  "type": "array",
+                  "contains": {
+                    "const": "Team"
+                  }
+                }
+              },
+              "required": [
+                "roles"
+              ]
+            },
+            "then": {
+              "required": [
+                "teamId"
+              ]
+            },
+            "else": {
+              "not": {
+                "anyOf": [
+                  {
+                    "required": [
+                      "teamId"
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "DevSession": {
+        "type": "object",
+        "properties": {
+          "accessToken": {
+            "type": "string",
+            "minLength": 1
+          },
+          "tokenType": {
+            "const": "Bearer"
+          },
+          "expiresAt": {
+            "$ref": "#/components/schemas/UtcTimestamp"
+          },
+          "profile": {
+            "$ref": "#/components/schemas/DevProfile"
+          }
+        },
+        "required": [
+          "accessToken",
+          "tokenType",
+          "expiresAt",
+          "profile"
+        ],
+        "additionalProperties": false
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "title": {
+            "type": "string"
+          },
+          "status": {
+            "type": "integer",
+            "minimum": 400,
+            "maximum": 599
+          },
+          "detail": {
+            "type": "string"
+          },
+          "instance": {
+            "type": "string",
+            "format": "uri-reference"
+          },
+          "code": {
+            "type": "string",
+            "minLength": 1
+          },
+          "correlationId": {
+            "$ref": "#/components/schemas/OpaqueId"
+          }
+        },
+        "required": [
+          "type",
+          "title",
+          "status",
+          "code",
+          "correlationId"
+        ],
+        "additionalProperties": false
+      },
+      "Liveness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "const": "Alive"
+          }
+        },
+        "required": [
+          "status"
+        ],
+        "additionalProperties": false
+      },
+      "Readiness": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "enum": [
+              "Ready",
+              "Unavailable"
+            ]
+          },
+          "database": {
+            "type": "boolean"
+          },
+          "broker": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "status",
+          "database",
+          "broker"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "parameters": {
+      "CheckId": {
+        "name": "checkId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/OpaqueId"
+        }
+      },
+      "IdempotencyKey": {
+        "name": "Idempotency-Key",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "minLength": 1
+        },
+        "description": "Scope: authenticated subjectId + operation (including target checkId) + key. Persist normalized request hash and original response. Authenticate/authorize first; replay a successful command before evaluating If-Match/current state. Different payload with same key: 409 IdempotencyConflict."
+      },
+      "IfMatch": {
+        "name": "If-Match",
+        "in": "header",
+        "required": true,
+        "schema": {
+          "$ref": "#/components/schemas/ETag"
+        },
+        "description": "The single strong Check ETag returned by GET. Missing: 428; stale: 412. Successful replay is checked first. Wildcards/multiple tags are not a substitute for the expected version."
+      }
+    },
+    "headers": {
+      "PrivateCache": {
+        "description": "All private data, including capabilities, is non-cacheable.",
+        "schema": {
+          "type": "string",
+          "const": "private, no-store"
+        }
+      },
+      "ETag": {
+        "description": "Strong ETag of the Check version. A successful idempotent replay preserves the original ETag.",
+        "schema": {
+          "$ref": "#/components/schemas/ETag"
+        }
+      }
+    },
+    "responses": {
+      "BadRequest": {
+        "description": "400: InvalidRequest, IdempotencyKeyRequired. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "InvalidRequest": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "BadRequest",
+                  "status": 400,
+                  "code": "InvalidRequest",
+                  "correlationId": "request-opaque-id"
+                }
+              },
+              "IdempotencyKeyRequired": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "BadRequest",
+                  "status": 400,
+                  "code": "IdempotencyKeyRequired",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "401: AuthenticationRequired. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "AuthenticationRequired": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Unauthorized",
+                  "status": 401,
+                  "code": "AuthenticationRequired",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Forbidden": {
+        "description": "403: Forbidden. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "Forbidden": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Forbidden",
+                  "status": 403,
+                  "code": "Forbidden",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "NotFound": {
+        "description": "404: CheckNotFound. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "CheckNotFound": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "NotFound",
+                  "status": 404,
+                  "code": "CheckNotFound",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Conflict": {
+        "description": "409: ReviewerBusy, CheckStateConflict, AssignmentConflict, IdempotencyConflict. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "ReviewerBusy": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "code": "ReviewerBusy",
+                  "correlationId": "request-opaque-id"
+                }
+              },
+              "CheckStateConflict": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "code": "CheckStateConflict",
+                  "correlationId": "request-opaque-id"
+                }
+              },
+              "AssignmentConflict": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "code": "AssignmentConflict",
+                  "correlationId": "request-opaque-id"
+                }
+              },
+              "IdempotencyConflict": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Conflict",
+                  "status": 409,
+                  "code": "IdempotencyConflict",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PreconditionFailed": {
+        "description": "412: CheckVersionConflict. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "CheckVersionConflict": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "PreconditionFailed",
+                  "status": 412,
+                  "code": "CheckVersionConflict",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "PreconditionRequired": {
+        "description": "428: IfMatchRequired. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "IfMatchRequired": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "PreconditionRequired",
+                  "status": 428,
+                  "code": "IfMatchRequired",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      },
+      "Unavailable": {
+        "description": "503: DependencyUnavailable, MaterialUnavailable. No material, tokens, stack traces, or private request data.",
+        "headers": {
+          "Cache-Control": {
+            "$ref": "#/components/headers/PrivateCache"
+          }
+        },
+        "content": {
+          "application/problem+json": {
+            "schema": {
+              "$ref": "#/components/schemas/ProblemDetails"
+            },
+            "examples": {
+              "DependencyUnavailable": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Unavailable",
+                  "status": 503,
+                  "code": "DependencyUnavailable",
+                  "correlationId": "request-opaque-id"
+                }
+              },
+              "MaterialUnavailable": {
+                "value": {
+                  "type": "about:blank",
+                  "title": "Unavailable",
+                  "status": 503,
+                  "code": "MaterialUnavailable",
+                  "correlationId": "request-opaque-id"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
