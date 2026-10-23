@@ -23,6 +23,10 @@ for (const [name, service] of Object.entries(cfg.services))
     assert.ok(!(service.secrets ?? []).some(s => s.source === 'capability_protection_key'));
   }
 const appealsApi = cfg.services['appeals-api'];
+const resultsApi = cfg.services['results-api'];
+assert.deepEqual(Object.keys(resultsApi.networks), ['results-data', 'transport']);
+assert.deepEqual(resultsApi.secrets.map(s => s.source), ['results_db_password', 'dev_issuer_public']);
+assert.ok(resultsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
 assert.deepEqual(Object.keys(appealsApi.networks), ['appeals-data', 'transport']);
 assert.deepEqual(appealsApi.secrets.map(s => s.source), ['appeals_db_password']);
 assert.ok(appealsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
@@ -123,4 +127,10 @@ assert.equal(closedPreservation.status, 0, closedPreservation.stderr);
 const appealsIdentity = run(['exec', '-T', 'appeals-api', 'sh', '-c', 'grep "^Uid:" /proc/1/status']);
 assert.equal(appealsIdentity.status, 0);
 assert.match(appealsIdentity.stdout, /^Uid:\s+1654\s+1654\s+1654\s+1654/m);
-console.log('Infrastructure: 3 own DB connections, 6 rejected cross-service connections, isolated networks/volumes, durable routing, producer permissions, Checking and Appeals readiness, Appeals migrations/Open fixture, non-root APIs: OK');
+const resultsReady = await fetch('http://127.0.0.1:5102/health/ready', { signal: AbortSignal.timeout(5000) });
+assert.equal(resultsReady.status, 200);
+assert.deepEqual(await resultsReady.json(), { status: 'Ready', database: true });
+const resultsIdentity = run(['exec', '-T', 'results-api', 'sh', '-c', 'grep "^Uid:" /proc/1/status']);
+assert.equal(resultsIdentity.status, 0);
+assert.match(resultsIdentity.stdout, /^Uid:\s+1654\s+1654\s+1654\s+1654/m);
+console.log('Infrastructure: 3 own DB connections, 6 rejected cross-service connections, isolated networks/volumes, durable routing, producer permissions, all API readiness and non-root identity: OK');

@@ -89,6 +89,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 12
+  results-api:
+    image: matigr-results-api:v0
+    build:
+      context: ../..
+      dockerfile: infra/compose/Results.Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Local
+      ASPNETCORE_HTTP_PORTS: '8080'
+      Fixtures__Directory: /fixtures
+      Identity__Issuer: matigr-local
+      Identity__Audience: matigr-user-api
+      Identity__PublicKeyPath: /run/secrets/dev_issuer_public
+    volumes:
+      - ../fixtures:/fixtures:ro
+    secrets: [results_db_password, dev_issuer_public]
+    networks: [results-data, transport]
+    ports: ['127.0.0.1:5102:8080']
+    depends_on:
+      results-db: { condition: service_healthy }
+    healthcheck:
+      test: [CMD-SHELL, 'bash -c "exec 3<>/dev/tcp/127.0.0.1/8080; printf ''GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n'' >&3; head -n 1 <&3 | grep -q '' 200 ''"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
   appeals-api:
     image: matigr-appeals-api:v0
     build:

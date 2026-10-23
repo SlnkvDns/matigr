@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <ItemGroup>
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <ProjectReference Include="../Results.Application/Results.Application.csproj" />
     <ProjectReference Include="../Results.Infrastructure/Results.Infrastructure.csproj" />
   </ItemGroup>

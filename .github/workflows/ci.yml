@@ -36,13 +36,20 @@ jobs:
       - run: node scripts/init-local.mjs
       - run: node scripts/prepare-fixtures.mjs
       - run: node scripts/check-checking-storage.mjs
+      - run: node scripts/check-results-storage.mjs
+      - if: always()
+        run: docker compose -p matigr-results-storage-tests -f infra/compose/results-storage-tests.yaml down
       - if: always()
         run: docker compose -p matigr-checking-storage-tests -f infra/compose/checking-storage-tests.yaml down
       - run: docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
       - run: node scripts/check-infrastructure.mjs
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/check-identity.mjs --restart
+      - run: node scripts/check-results-http.mjs
       - run: node scripts/check-checking-work.mjs --restart
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-checking-transitions.mjs
         env:
           COMPOSE_PROJECT_NAME: matigr
       - if: always()

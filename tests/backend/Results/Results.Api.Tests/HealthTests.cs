@@ -18,7 +18,7 @@ public class HealthTests
 
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
         Assert.Equal(expected, (await client.GetAsync("/health/ready")).StatusCode);
-        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/results/tournaments/test/standings")).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/api/v1/results/unknown")).StatusCode);
     }
 
     private sealed class Probe(bool database) : IResultsReadiness

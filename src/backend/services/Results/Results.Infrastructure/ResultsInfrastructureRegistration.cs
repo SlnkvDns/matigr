@@ -10,6 +10,7 @@ public static class ResultsInfrastructureRegistration
     public static IServiceCollection AddResultsInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddScoped<IApplyEvaluation, ApplyEvaluation>();
+        services.AddScoped<IResultReads, ResultReads>();
         services.AddDbContext<ResultsDbContext>(options => options.UseNpgsql(
             configuration.GetConnectionString("Results")
                 ?? throw new InvalidOperationException("Results connection string is required.")));

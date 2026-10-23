@@ -111,3 +111,5 @@ Integration выполняются на PostgreSQL и настоящем broker 
 ## 9. Решения до реализации
 
 Приняты SSE T04, общая snapshot lock/query read side и отображение pending/пустой суммы. Q09 для локальных fixtures уточнён явно (10/20 целых, строки JSON); версии T02/T03 закреплены в CHK-INF-01. Остаются Q10 — объём/лаг; Q13 — retention/эксплуатационные параметры. Публичные поля ограничиваются уже согласованной таблицей; Q16 не разрешает публиковать историю/авторов. Все проверки совместимости включены в [общую матрицу](../../architecture/implementation-contracts.md#5-проверка-согласованности).
+
+Текущая реализация 24 октября: RES-BE-01–04 и RES-UT-01/02 завершены, см. журнал и [границы adapters](../../../src/backend/services/Results/Results.Infrastructure/README.md). Standings/private/internal HTTP реализованы; SQL rank case-наборы выполняются на настоящей PostgreSQL. Runtime consumer/outbox, SSE и Appeal application остаются RES-INT-02, RES-BE-05/06.

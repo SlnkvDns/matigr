@@ -18,7 +18,7 @@ Frontend: feature `checking` в единственном `src/frontend/apps/web`
 
 CHK-FE-01/02: [единый frontend](../../../src/frontend/apps/web/README.md) создан с маршрутами трёх feature-модулей, HTTP DTO Checking, общим JSON/ProblemDetails transport и переключением тестовых субъектов/profile через реальный issuer. Токен только в памяти; смена субъекта очищает частное состояние. Реальные очереди/вердикты, standings/SSE и апелляции реализуются отдельными задачами ниже; текущий UI их не имитирует.
 
-CHK-BE-04: [dev-выдача/profile и JWT verification contract](../../../contracts/authentication.md) реализованы отдельно от бизнес-модели. Серверные policies проверяют reviewer/senior и турнирный scope; CHK-BE-05 проверяет актуального владельца/назначение при чтении, Complete/Refuse остаются CHK-BE-06. Frontend-сессия подключена в CHK-FE-02.
+CHK-BE-04: [dev-выдача/profile и JWT verification contract](../../../contracts/authentication.md) реализованы отдельно от бизнес-модели. Серверные policies проверяют reviewer/senior и турнирный scope; CHK-BE-05 проверяет актуального владельца/назначение при чтении, Complete/Refuse реализованы в CHK-BE-06. Frontend-сессия подключена в CHK-FE-02.
 
 ## 2. Сущности и состояния
 
@@ -59,13 +59,13 @@ Completed неизменяем; новая оценка — отдельный A
 
 Локальные FK возможны только внутри checking_db; appealId/resultId/teamId — внешние ID без FK к другим БД. Индексы очереди по state/tournament/createdAt/checkId. Секрет защиты capability стабилен при restart и хранится вне БД/репозитория; GET владельца восстанавливает capability из защищённого значения, не пытается восстановить его из hash. Материал не хранится как байты в БД/сообщениях; adapter разрешает только подготовленные materialRef из allowlist, не произвольный filesystem path/URL клиента. Недоступный материал — ошибка чтения, а не Incorrect.
 
-CHK-BE-02: [схема хранения, миграция и границы записи](../../../src/backend/services/Checking/Checking.Infrastructure/Storage/README.md) реализованы. Partial UNIQUE проверены на настоящей PostgreSQL, версия Check участвует в CAS, capability и чувствительный HTTP replay хранятся зашифрованно. Bootstrap реализован в CHK-BE-03, TakeNext/read handlers — в CHK-BE-05; Complete/Refuse и transport остаются следующими задачами; schema tests не объявляются завершением CHK-IT-01.
+CHK-BE-02: [схема хранения, миграция и границы записи](../../../src/backend/services/Checking/Checking.Infrastructure/Storage/README.md) реализованы. Partial UNIQUE проверены на настоящей PostgreSQL, версия Check участвует в CAS, capability и чувствительный HTTP replay хранятся зашифрованно. Bootstrap реализован в CHK-BE-03, TakeNext/read handlers — в CHK-BE-05; Complete/Refuse реализованы в CHK-BE-06; transport остаётся следующими задачами; schema tests не объявляются завершением CHK-IT-01.
 
 ## 4. REST API
 
 CHK-BE-03: внутренний bootstrap принятых ссылок/Initial Check и read-only fixture material adapter реализованы. Local startup закрепляет неизменный набор в `fixture_sets`, повтор не создаёт новую работу и не сбрасывает назначение/вердикт. Материал выдаётся только по полному allowlisted snapshot после проверки SHA-256, без записи/загрузки. HTTP route и актуальное право владельца реализованы в CHK-BE-05.
 
-Все маршруты с `/api/v1/checking`, кроме dev-issuer. Форма HTTP DTO опубликована отдельно от доменных классов в [Checking OpenAPI](../../../contracts/http/checking/openapi.json), условные поля сообщений — в [JSON Schema](../../../contracts/README.md) (CHK-INT-01). TakeNext, очереди, текущее назначение/Check, материал владельца и отдельные .NET DTO/serialization adapters реализованы в CHK-BE-05; Complete/Refuse и transport остаются следующими задачами.
+Все маршруты с `/api/v1/checking`, кроме dev-issuer. Форма HTTP DTO опубликована отдельно от доменных классов в [Checking OpenAPI](../../../contracts/http/checking/openapi.json), условные поля сообщений — в [JSON Schema](../../../contracts/README.md) (CHK-INT-01). TakeNext, очереди, текущее назначение/Check, материал владельца и отдельные .NET DTO/serialization adapters реализованы в CHK-BE-05; Complete/Refuse реализованы в CHK-BE-06; transport остаётся следующими задачами.
 
 | Метод и путь | Права и вход | Результат |
 | --- | --- | --- |
@@ -127,3 +127,5 @@ Initial: expectedResultVersion=0 и без appeal-полей. Appeal: resultId, 
 ## 9. Решения до реализации
 
 Решения и оставшиеся вопросы — [итоги ревью](../../architecture/implementation-contracts.md#7-решения-и-оставшиеся-вопросы). Для Checking приняты T08 (алгоритм очереди) и T02/T03 (технологический выбор); остаются Q05 (scope/несколько старших) и детали Q13 (версии/эксплуатационные параметры). Q06 не разрешает вводить TTL/ручное снятие: базовый MVP сохраняет назначения. Контракты будущего приёма не превращать в работы текущего плана. Спецификация и план одобрены; задачи реализации ещё не выполнены.
+
+Текущая реализация 24 октября: CHK-BE-06, CHK-UT-01, CHK-IT-01 и CHK-FE-03 завершены; фактические проверки/ограничения — в журнале. Экран жюри подключён к реальному API. Публикация outbox и runtime RecheckRequested остаются CHK-INT-02/03.
