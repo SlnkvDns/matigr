@@ -8,7 +8,7 @@ try {
     $env:NUGET_PACKAGES = "$repo/.local/nuget"
     if ($Restore) {
         npm ci --ignore-scripts --no-audit --no-fund --cache .local/npm-cache
-        if ($LASTEXITCODE) { throw 'Contract tool restore failed' }
+        if ($LASTEXITCODE) { throw 'npm workspace restore failed' }
     }
     node scripts/check-architecture.mjs
     if ($LASTEXITCODE) { throw 'Architecture check failed' }
@@ -20,6 +20,14 @@ try {
     if ($LASTEXITCODE) { throw 'Fixture tests failed' }
     npm run test:contracts
     if ($LASTEXITCODE) { throw 'Contract tests failed' }
+    npm run check:api
+    if ($LASTEXITCODE) { throw 'Generated frontend DTOs are stale' }
+    npm run typecheck:web
+    if ($LASTEXITCODE) { throw 'Frontend typecheck failed' }
+    npm run test:web
+    if ($LASTEXITCODE) { throw 'Frontend tests failed' }
+    npm run build:web
+    if ($LASTEXITCODE) { throw 'Frontend build failed' }
     if ($Restore) {
         & $dotnet restore src/backend/Matigr.slnx --locked-mode
         if ($LASTEXITCODE) { throw 'Restore failed' }

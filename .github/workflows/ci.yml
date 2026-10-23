@@ -16,6 +16,10 @@ jobs:
       - run: node scripts/check-architecture.mjs
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: npm run test:contracts
+      - run: npm run check:api
+      - run: npm run typecheck:web
+      - run: npm run test:web
+      - run: npm run build:web
       - run: node scripts/check-docs.mjs
       - run: node scripts/prepare-fixtures.mjs
       - run: node --test tests/fixtures/fixtures.test.mjs

@@ -41,7 +41,7 @@
 
 | ID | Сценарий | Зависимости | Работа и проверяемый результат |
 | --- | --- | --- | --- |
-| CHK-FE-01 | V0 | CHK-INF-02, CHK-INT-01 | Создать один React/TypeScript/Vite app, маршруты feature-модулей, HTTP/ProblemDetails client и команды typecheck/component tests. Проверка: нет второго frontend у соседних сервисов, API DTO отделены от domain |
+| CHK-FE-01 | V0 | CHK-INF-02, CHK-INT-01 | **Выполнена 23 октября 2026 года**, [frontend](../../../src/frontend/apps/web/README.md), [журнал](../../implementation/progress.md). Один React/TypeScript/Vite app, маршруты feature-модулей, HTTP/ProblemDetails client и команды typecheck/component tests. Проверка: нет второго frontend у соседних сервисов, API DTO генерируются из OpenAPI отдельно от domain; бизнес-экраны остаются последующими задачами |
 | CHK-FE-02 | V0/V1 | CHK-FE-01, CHK-BE-04 | Добавить переключение dev-субъектов/профиль. Проверка: токен только в памяти, смена пользователя очищает private query/cache/материал/действия; анонимная таблица остаётся доступной |
 | CHK-FE-03 | V1/V2 | CHK-FE-02, CHK-BE-03, CHK-BE-05, CHK-BE-06 | Добавить очередь/текущее назначение/материал/бинарный вердикт/отказ и senior queue. Проверка component/API tests: правильные действия по state, без комментария, после передачи можно взять следующую |
 | CHK-FE-04 | V1/V6 | CHK-FE-03, CHK-IT-02 | Добавить восстановление текущего назначения при возврате/reconnect, обработку 412/409/потерянного ответа с тем же ключом. Проверка frontend tests: старый ответ/другая вкладка не возвращает завершённое назначение; нет таймера освобождения |

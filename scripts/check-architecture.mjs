@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 const root = path.resolve(import.meta.dirname, '..');
 async function walk(dir) {
   const entries = await readdir(dir, { withFileTypes: true });
-  const children = await Promise.all(entries.filter(e => !['bin', 'obj'].includes(e.name)).map(async e =>
+  const children = await Promise.all(entries.filter(e => !['bin', 'obj', 'node_modules', 'dist'].includes(e.name)).map(async e =>
     e.isDirectory() ? walk(path.join(dir, e.name)) : [path.join(dir, e.name)]));
   return children.flat();
 }
@@ -24,3 +24,6 @@ for (const file of (await walk(path.join(root, 'src/backend/services'))).filter(
   if (layer === 'Domain') assert.ok(!/<(?:PackageReference|FrameworkReference)\b/.test(xml), `Domain has framework dependency: ${file}`);
 }
 console.log('Architecture references: OK');
+const frontendPackages = (await walk(path.join(root, 'src/frontend/apps'))).filter(file => path.basename(file) === 'package.json');
+assert.deepEqual(frontendPackages, [path.join(root, 'src/frontend/apps/web/package.json')], 'MVP has exactly one frontend application');
+console.log('Single frontend application: OK');

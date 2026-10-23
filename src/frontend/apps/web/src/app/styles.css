@@ -1,0 +1,49 @@
+@import url('../shared/ui/problem.css');
+
+:root { font-family: Inter, "Segoe UI", system-ui, sans-serif; color: #202a26; background: #f5f6f2; font-synthesis: none; text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+a { color: inherit; }
+a:focus-visible, button:focus-visible { outline: 3px solid #32745d; outline-offset: 5px; border-radius: 3px; }
+.app-shell { max-width: 1200px; min-height: 100dvh; margin: 0 auto; padding: 0 48px; display: flex; flex-direction: column; }
+.app-header { min-height: 120px; display: flex; align-items: center; justify-content: space-between; gap: 24px; border-bottom: 1px solid #dce2d9; }
+.brand { display: flex; align-items: center; gap: 13px; color: #263b31; text-decoration: none; font-size: 26px; font-weight: 650; letter-spacing: -.9px; line-height: 1.1; }
+.brand-mark { display: grid; place-items: center; width: 44px; height: 44px; border: 1px solid #aebdb0; border-radius: 12px; font: italic 35px Georgia, serif; padding-bottom: 6px; background: #e9eee6; }
+.brand-caption { display: block; margin-top: 5px; color: #69756c; font-size: 10px; font-weight: 400; letter-spacing: .6px; }
+.main-nav { display: flex; gap: 6px; }
+.main-nav a { padding: 11px 16px; text-decoration: none; border-radius: 7px; color: #5e6b63; font-size: 14px; font-weight: 500; transition: background .15s; }
+.main-nav a:hover { background: #e9eee5; color: #263b31; }
+.main-nav a[aria-current="page"] { color: #214e39; background: #e3eadf; }
+main { flex: 1; }
+.page { padding: 62px 0 80px; }
+.eyebrow { margin: 0 0 14px; font-size: 11px; text-transform: uppercase; letter-spacing: 1.8px; color: #677969; }
+h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-weight: 400; font-size: clamp(36px, 5vw, 52px); line-height: 1.15; letter-spacing: -1.9px; }
+h1:focus { outline: none; }
+.page-description { color: #677269; margin: 19px 0 0; font-size: 15px; line-height: 1.65; max-width: 620px; }
+.unavailable-panel { margin-top: 40px; min-height: 310px; display: flex; align-items: center; gap: 45px; padding: 52px 62px; background: #fff; border: 1px solid #e0e5dc; border-radius: 14px; box-shadow: 0 4px 22px #283b2410; }
+.unavailable-symbol { flex-shrink: 0; width: 96px; height: 110px; padding: 30px 23px; border: 1px solid #cedac8; border-radius: 8px; background: linear-gradient(150deg, #f5f8f1, #edf3e8); transform: rotate(-5deg); }
+.unavailable-symbol span { display: block; height: 2px; margin-bottom: 12px; background: #afc2a6; }
+.unavailable-symbol span:last-child { width: 55%; }
+.unavailable-copy { max-width: 510px; }
+.status-label { margin: 0 0 15px; color: #738167; display: flex; align-items: center; gap: 7px; text-transform: uppercase; letter-spacing: 1.2px; font-size: 10px; font-weight: 600; }
+.status-label > span { width: 5px; height: 5px; border-radius: 50%; background: #8c9d7f; }
+.unavailable-copy h2 { margin: 0 0 13px; font-size: 23px; font-weight: 500; letter-spacing: -.5px; }
+.unavailable-copy > p:last-child { margin: 0; color: #6b756c; font-size: 14px; line-height: 1.8; }
+.app-footer { display: flex; justify-content: space-between; gap: 16px; padding: 25px 0 30px; border-top: 1px solid #dce2d9; color: #7c867d; font-size: 11px; }
+.app-footer span:first-child { color: #4d5f50; font-weight: 600; }
+.text-link { display: inline-block; margin-top: 30px; text-underline-offset: 5px; color: #28593e; }
+.skip-link { position: fixed; z-index: 5; top: -60px; left: 16px; background: #fff; padding: 12px 18px; border: 1px solid #32745d; border-radius: 5px; }
+.skip-link:focus { top: 12px; }
+@media (max-width: 700px) {
+  .app-shell { padding: 0 24px; }
+  .app-header { align-items: flex-start; flex-direction: column; padding: 26px 0 18px; gap: 22px; }
+  .main-nav { width: 100%; }
+  .main-nav a { flex: 1; text-align: center; padding: 11px 8px; }
+  .page { padding: 38px 0 60px; }
+  h1 { letter-spacing: -1.2px; }
+  .unavailable-panel { margin-top: 30px; padding: 35px 28px; align-items: flex-start; flex-direction: column; gap: 28px; }
+  .unavailable-symbol { width: 63px; height: 76px; padding: 20px 15px; }
+  .unavailable-symbol span { margin-bottom: 9px; }
+  .app-footer { font-size: 10px; }
+}
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { transition: none !important; } }

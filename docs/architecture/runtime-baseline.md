@@ -15,6 +15,8 @@
 | Node / npm | 22.14.0 / 10.9.2 | [Официальный выпуск](https://nodejs.org/en/blog/release/v22.14.0); [Vite требует Node >=22.12](https://vite.dev/guide/) |
 | React / React DOM | 19.3.1 | Точные версии npm registry, lockfile при создании frontend |
 | TypeScript / Vite / plugin-react | 5.9.3 / 8.3.5 / 6.1.2 | Проверены engines; Node 22.14.0 удовлетворяет Vite/plugin |
+| React Router / OpenAPI TypeScript | 7.9.5 / 7.13.0 | CHK-FE-01: declarative маршруты единственного app, генерация DTO из OpenAPI и проверка актуальности; Router требует Node >=20 / React >=18, генератор совместим с TypeScript 5.x |
+| Testing Library user-event / types React / types React DOM / types Node | 14.6.1 / 19.2.2 / 19.2.2 / 22.14.0 | CHK-FE-01: точные дополнительные dev-версии в workspace package.json и общем lockfile |
 | Vitest / jsdom | 5.0.5 / 26.1.0 | jsdom 26 допускает Node >=18; jsdom 30 требует более новый Node и здесь не используется |
 | Testing Library React / jest-dom | 16.3.3 / 7.0.1 | Node >=18 / >=22 |
 | Playwright | 1.64.1 | Будущий E2E; Node >=20, браузеры устанавливаются вместе с этой версией |

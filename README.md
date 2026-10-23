@@ -4,7 +4,7 @@
 
 Планы одобрены 23 октября 2026 года; реализация поручена отдельно в тот же день. [Статус задач и доказательства проверок](docs/implementation/progress.md), [матрица версий](docs/architecture/runtime-baseline.md), [контракты и зависимости](docs/architecture/implementation-contracts.md).
 
-## Проверка backend
+## Проверка проекта
 
 Нужны SDK из global.json, Node из .node-version, npm 10.9.2. Локальный SDK можно разместить в игнорируемом `.tools/dotnet`; системный SDK менять не требуется.
 
@@ -18,6 +18,10 @@ Linux/macOS:
 node scripts/check-architecture.mjs
 npm ci --ignore-scripts --no-audit --no-fund
 npm run test:contracts
+npm run check:api
+npm run typecheck:web
+npm run test:web
+npm run build:web
 dotnet restore src/backend/Matigr.slnx --locked-mode
 dotnet build src/backend/Matigr.slnx --no-restore -c Release
 dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
@@ -28,6 +32,15 @@ dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
 ## Контракты
 
 [OpenAPI Checking](contracts/http/checking/openapi.json) и [JSON Schema сообщений](contracts/README.md) описывают согласованный интерфейс отдельно от доменных моделей. Проверка: `npm run test:contracts` после `npm ci`. Она включена в общую команду PowerShell и CI. Бизнес-маршруты пока описаны контрактом; исполняемые обработчики относятся к CHK-BE-04–06. Проверки реальных отправителей/потребителей и брокера — отдельные задачи CHK-INT-02–04.
+
+## Frontend
+
+```sh
+npm ci --ignore-scripts --no-audit --no-fund
+npm run dev:web
+```
+
+Единое приложение: [http://127.0.0.1:5173](http://127.0.0.1:5173). В CHK-FE-01 созданы навигация разделов, HTTP/ProblemDetails client и типы из OpenAPI; бизнес-экраны подключаются следующими задачами. Проверки: `npm run check:api`, `npm run typecheck:web`, `npm run test:web`, `npm run build:web`; они также входят в `scripts/check.ps1 -Restore` и CI. [Устройство frontend и границы текущего шага](src/frontend/apps/web/README.md).
 
 ## Локальная инфраструктура
 

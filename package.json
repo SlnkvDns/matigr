@@ -5,8 +5,15 @@
   "type": "module",
   "engines": { "node": "22.14.0", "npm": "10.9.2" },
   "packageManager": "npm@10.9.2",
+  "workspaces": ["src/frontend/apps/web"],
   "scripts": {
-    "test:contracts": "node --test tests/contracts/*.test.mjs"
+    "test:contracts": "node --test tests/contracts/*.test.mjs",
+    "dev:web": "npm run dev --workspace @matigr/web",
+    "typecheck:web": "npm run typecheck --workspace @matigr/web",
+    "test:web": "npm run test --workspace @matigr/web",
+    "build:web": "npm run build --workspace @matigr/web",
+    "generate:api": "npm run generate:api --workspace @matigr/web",
+    "check:api": "npm run check:api --workspace @matigr/web"
   },
   "devDependencies": {
     "@apidevtools/swagger-parser": "12.1.0",
