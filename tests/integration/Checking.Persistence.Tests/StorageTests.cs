@@ -23,12 +23,12 @@ public sealed class DatabaseFixture : IAsyncLifetime
         await using var db = Open();
         if (Environment.GetEnvironmentVariable("StorageTest__RestartRead") == "true")
         {
-            Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
+            Assert.Equal(3, (await db.Database.GetAppliedMigrationsAsync()).Count());
             return;
         }
         await db.Database.EnsureDeletedAsync();
         await db.Database.MigrateAsync();
-        Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
+        Assert.Equal(3, (await db.Database.GetAppliedMigrationsAsync()).Count());
         Assert.False(db.Database.HasPendingModelChanges());
         await db.GetService<IMigrator>().MigrateAsync("0");
         Assert.Empty(await db.Database.GetAppliedMigrationsAsync());

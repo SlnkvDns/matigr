@@ -6,14 +6,16 @@ using Matigr.Checking.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Matigr.Checking.Infrastructure.Fixtures;
 using Matigr.Checking.Api;
+using Matigr.Transport;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApiProblemDetails();
 builder.Services.AddCheckingIdentity(builder.Configuration, builder.Environment);
 builder.Services.AddCheckingStorage(builder.Configuration);
+builder.Services.AddCheckingTransport(builder.Configuration);
 if (builder.Environment.IsEnvironment("Local") || builder.Environment.IsEnvironment("Test"))
     builder.Services.AddPreparedCheckingFixtures(builder.Configuration);
-builder.Services.AddSingleton<ICheckingReadiness>(_ => new CheckingReadiness(
+builder.Services.AddSingleton<ICheckingReadiness>(provider => new CheckingReadiness(
     builder.Configuration.GetConnectionString("Checking")
         ?? throw new InvalidOperationException("Checking connection string is required."),
     new ConnectionFactory
@@ -25,7 +27,7 @@ builder.Services.AddSingleton<ICheckingReadiness>(_ => new CheckingReadiness(
             ?? throw new InvalidOperationException("Broker password is required."),
         VirtualHost = "matigr",
         RequestedConnectionTimeout = TimeSpan.FromSeconds(2)
-    }));
+    }, builder.Configuration.GetValue<bool>("Transport:Enabled") ? provider.GetRequiredService<TransportHealth>() : null));
 var app = builder.Build();
 _ = app.Services.GetRequiredService<UserTokenVerifier>();
 _ = app.Services.GetRequiredService<StorageProtection>();
@@ -35,6 +37,7 @@ if (app.Environment.IsEnvironment("Local") && builder.Configuration.GetValue("St
     await scope.ServiceProvider.GetRequiredService<CheckingDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.BootstrapPreparedCheckingFixturesAsync(CancellationToken.None);
 }
+if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;
 app.UseExceptionHandler();
 app.UsePrivateIdentityResponses();
 app.UseAuthentication();

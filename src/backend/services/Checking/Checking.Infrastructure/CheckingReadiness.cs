@@ -4,7 +4,7 @@ using RabbitMQ.Client;
 
 namespace Matigr.Checking.Infrastructure;
 
-public sealed class CheckingReadiness(string connectionString, ConnectionFactory broker) : ICheckingReadiness
+public sealed class CheckingReadiness(string connectionString, ConnectionFactory broker, Matigr.Transport.TransportHealth? runtime = null) : ICheckingReadiness
 {
     public async Task<DependencyReadiness> ProbeAsync(CancellationToken cancellationToken)
     {
@@ -27,6 +27,6 @@ public sealed class CheckingReadiness(string connectionString, ConnectionFactory
             transport = connection.IsOpen;
         }
         catch (Exception e) when (e is RabbitMQ.Client.Exceptions.BrokerUnreachableException or OperationCanceledException) { }
-        return new DependencyReadiness(database, transport);
+        return new DependencyReadiness(database, transport && (runtime?.Connected ?? true));
     }
 }

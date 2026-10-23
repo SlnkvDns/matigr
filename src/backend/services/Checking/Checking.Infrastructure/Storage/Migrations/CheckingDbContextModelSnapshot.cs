@@ -478,6 +478,19 @@ namespace Checking.Infrastructure.Storage.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("recorded_at");
 
+                    b.Property<int>("RedriveCount")
+                        .HasColumnType("integer")
+                        .HasColumnName("redrive_count");
+
+                    b.Property<DateTimeOffset?>("RedrivenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redriven_at");
+
+                    b.Property<string>("RoutingKey")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("routing_key");
+
                     b.Property<string>("State")
                         .IsRequired()
                         .HasColumnType("text")
@@ -488,6 +501,9 @@ namespace Checking.Infrastructure.Storage.Migrations
                     b.HasIndex("Consumer", "MessageId");
 
                     b.HasIndex("State", "NextAttemptAt");
+
+                    b.HasIndex("Consumer", "MessageId", "PayloadHash")
+                        .IsUnique();
 
                     b.ToTable("processing_failures", null, t =>
                         {
@@ -614,6 +630,37 @@ namespace Checking.Infrastructure.Storage.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Matigr.Checking.Infrastructure.Storage.TransportRedriveRow", b =>
+                {
+                    b.Property<Guid>("RedriveId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid")
+                        .HasColumnName("redrive_id");
+
+                    b.Property<Guid>("FailureId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("failure_id");
+
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("PayloadHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("payload_hash");
+
+                    b.Property<DateTimeOffset>("RedrivenAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("redriven_at");
+
+                    b.HasKey("RedriveId");
+
+                    b.HasIndex("FailureId");
+
+                    b.ToTable("transport_redrives", (string)null);
+                });
+
             modelBuilder.Entity("Matigr.Checking.Infrastructure.Storage.AssignmentRow", b =>
                 {
                     b.HasOne("Matigr.Checking.Infrastructure.Storage.CheckRow", null)
@@ -660,6 +707,15 @@ namespace Checking.Infrastructure.Storage.Migrations
                         .WithMany()
                         .HasForeignKey("CheckId")
                         .OnDelete(DeleteBehavior.Restrict);
+                });
+
+            modelBuilder.Entity("Matigr.Checking.Infrastructure.Storage.TransportRedriveRow", b =>
+                {
+                    b.HasOne("Matigr.Checking.Infrastructure.Storage.ProcessingFailureRow", null)
+                        .WithMany()
+                        .HasForeignKey("FailureId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 #pragma warning restore 612, 618
         }

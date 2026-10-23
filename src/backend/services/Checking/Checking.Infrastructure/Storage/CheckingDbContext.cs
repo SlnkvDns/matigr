@@ -183,9 +183,14 @@ public sealed class CheckingDbContext(DbContextOptions<CheckingDbContext> option
             e.HasKey(x => x.FailureId);
             e.HasIndex(x => new { x.State, x.NextAttemptAt });
             e.HasIndex(x => new { x.Consumer, x.MessageId });
+            e.HasIndex(x => new { x.Consumer, x.MessageId, x.PayloadHash }).IsUnique();
         });
 
         // Explicit local naming, without a global/provider convention dependency.
+        model.Entity<TransportRedriveRow>(e => {
+            e.ToTable("transport_redrives"); e.HasKey(x => x.RedriveId);
+            e.HasOne<ProcessingFailureRow>().WithMany().HasForeignKey(x => x.FailureId).OnDelete(DeleteBehavior.Restrict);
+        });
         foreach (var entity in model.Model.GetEntityTypes())
         foreach (var property in entity.GetProperties())
             property.SetColumnName(string.Concat(property.Name.Select((c, i) => char.IsUpper(c) && i > 0 ? "_" + char.ToLowerInvariant(c) : char.ToLowerInvariant(c).ToString())));

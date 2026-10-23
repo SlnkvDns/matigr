@@ -1,0 +1,17 @@
+# Технический образец транспорта
+
+Исходники компилируются отдельно в Infrastructure Checking и Results через linked Compile. Это инфраструктурный образец CHK-INT-02, без общей сборки/ORM/агрегатов/бизнес-правил. Каждая копия использует только собственную connection string, свои таблицы и producer/consumer-owned embedded JSON Schema. Нового сервиса нет.
+
+Outbox: короткая транзакция claim с SKIP LOCKED и технической блокировкой; SQL-транзакция закрыта до сетевого IO. Persistent publish с mandatory и confirmations/tracking RabbitMQ 7.2.2; BasicPublishAsync завершается после confirm и выбрасывает исключение при nack/return. Sent ставится CAS по исходной блокировке. Сбой после confirm допускает дубль с прежним messageId. Истёкший claim восстанавливается даже после последней попытки; блокировка outbox не относится к назначению жюри.
+
+Вход: BasicGet с manual ack; schema/producer/routing/lineage guard, затем собственный application handler. Ack после бизнес-коммита либо durable Deferred/Quarantined. Неизвестный обработчик/временная зависимость сохраняются для retry без terminal inbox. Невалидное сообщение не вызывает горячий requeue. Недоступная БД оставляет доставку неподтверждённой; reconnect с backoff. Никакой exactly-once доставки и общего порядка нет.
+
+WireSchema проверяет используемый опубликованными Draft 2020-12 schemas набор assertion keywords. Неизвестная assertion останавливает startup, а не игнорируется. Consumer schemas независимы от producer schemas; runtime fixtures и негативные изменения проверяются отдельно. Семантические равенства selected/actual и aggregate/check проверяются дополнительно. Raw poison сохраняется как text в собственной БД, не в логах/HTTP. Доступ к диагностике — операторский.
+
+Настройки `Transport:*`: Enabled (по умолчанию false, Compose включает), PollMilliseconds=500, LeaseSeconds=30, MaxAttempts=8, RetryBaseSeconds=2, RetryMaxSeconds=60. Это изменяемые технические defaults, не бизнес-сроки и не SLO. Retry ограничен, exponential backoff capped; после исчерпания сохраняется quarantine, outbox остаётся Pending и не считается доставленным. Retention/автоочистки нет.
+
+Оператор с доступом к контейнеру/секретам может выполнить `docker compose … exec -T checking-api sh /app/entrypoint.sh --Transport:Redrive=<failureId>` (или results-api). Это отдельный CLI-запуск без HTTP, не новая бизнес-команда. Payload/messageId/основание не редактируются; атомарно пишется append-only transport_redrives, timestamp/count и сброс технического retry. Ошибочный payload снова окажется в карантине. Нет автоматического redrive бизнес-конфликтов или смены expectedResultVersion.
+
+Meter Matigr.Transport: published/acknowledged/failures/redriven, outbox pending/age, Deferred/Quarantined. Readiness при включённом транспорте учитывает соединение worker, дополнительно к БД. Логи не содержат exceptions/raw payload/credentials/capability; диагностические причины сохраняются в БД.
+
+Проверки: PostgreSQL tests leases/rollback/recovery/audit; `scripts/check-transport.mjs` требует явно выбранного свежего тестового Compose-проекта, останавливает его RabbitMQ, временно снимает и восстанавливает binding, проверяет реальные confirms/return/quarantine/redrive. Основные volumes не сбрасываются. Checking RecheckRequested и Results Appeal handlers остаются следующими задачами: до их реализации валидное сообщение сохраняется Deferred, не выдаётся ложное бизнес-подтверждение.

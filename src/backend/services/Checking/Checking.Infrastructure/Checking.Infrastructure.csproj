@@ -1,5 +1,9 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Compile Include="../../../transport/*.cs" Link="Transport/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../../../contracts/events/checking/*.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../../../contracts/events/checking/consumers/recheck-requested.v1.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <ProjectReference Include="../Checking.Application/Checking.Application.csproj" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
