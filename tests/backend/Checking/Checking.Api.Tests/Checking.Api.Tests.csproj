@@ -4,6 +4,9 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <Content Include="../../../../tests/contracts/fixtures/checking/*.json" Link="WireFixtures/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <EmbeddedResource Include="../../../../contracts/events/results/consumers/check-completed.v1.schema.json" LogicalName="Consumer.Results.check-completed.v1.schema.json" />
+    <EmbeddedResource Include="../../../../contracts/events/appeals/consumers/*.schema.json" LogicalName="Consumer.Appeals.%(Filename)%(Extension)" />
     <Compile Include="../../../fixtures/PreparedFixtureFiles.cs" Link="PreparedFixtureFiles.cs" />
     <ProjectReference Include="../../../../src/backend/services/Checking/Checking.Api/Checking.Api.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
