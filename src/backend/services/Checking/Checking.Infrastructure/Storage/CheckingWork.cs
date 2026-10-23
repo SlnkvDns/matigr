@@ -11,7 +11,7 @@ using Npgsql;
 
 namespace Matigr.Checking.Infrastructure.Storage;
 
-internal sealed class CheckingWork(CheckingDbContext db, StorageProtection protection, IReadOnlyMaterialStore materials,
+internal sealed partial class CheckingWork(CheckingDbContext db, StorageProtection protection, IReadOnlyMaterialStore materials,
     TimeProvider clock, QueueReadOptions options) : ICheckingWork
 {
     private const string TakeOperation = "TakeNext";

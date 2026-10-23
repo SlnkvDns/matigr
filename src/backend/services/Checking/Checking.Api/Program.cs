@@ -40,7 +40,7 @@ app.UsePrivateIdentityResponses();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapDevIdentity();
-app.MapCheckingApi().MapCheckingWork(); // Complete/Refuse join in CHK-BE-06.
+app.MapCheckingApi().MapCheckingWork();
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapGet("/health/ready", async (ICheckingReadiness readiness, CancellationToken cancellationToken) =>
 {

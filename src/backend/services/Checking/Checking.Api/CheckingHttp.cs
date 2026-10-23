@@ -11,6 +11,37 @@ public static class CheckingHttp
 {
     public static void MapCheckingWork(this RouteGroupBuilder group)
     {
+        foreach (var operation in new[] { "complete", "refuse" })
+        {
+            var complete = operation == "complete";
+            group.MapPost("/checks/{checkId}/" + operation, (string checkId, HttpContext context, ICheckingWork work, CancellationToken ct) => Guard(context, async () =>
+            {
+                if (!Guid.TryParse(checkId, out var id)) return IdentityHttp.Problem(context, 404, "CheckNotFound", "Resource unavailable");
+                var key = context.Request.Headers["Idempotency-Key"];
+                if (key.Count == 0 || string.IsNullOrEmpty(key.ToString())) return IdentityHttp.Problem(context, 400, "IdempotencyKeyRequired", "Idempotency key required");
+                var etag = context.Request.Headers.IfMatch;
+                if (etag.Count == 0) return IdentityHttp.Problem(context, 428, "PreconditionRequired", "If-Match required");
+                if (etag.Count != 1 || !System.Text.RegularExpressions.Regex.IsMatch(etag.ToString(), "^\"[1-9][0-9]*\"$")
+                    || !long.TryParse(etag.ToString().Trim('"'), out var version)
+                    || key.Count != 1 || !context.Request.HasJsonContentType()) return IdentityHttp.Problem(context, 400, "InvalidRequest", "Invalid command");
+                try
+                {
+                    using var json = await JsonDocument.ParseAsync(context.Request.Body, cancellationToken: ct);
+                    var body = json.RootElement;
+                    if (body.ValueKind != JsonValueKind.Object || body.EnumerateObject().Count() != (complete ? 3 : 2)
+                        || !body.TryGetProperty("assignmentId", out var assignment) || assignment.ValueKind != JsonValueKind.String
+                        || !Guid.TryParse(assignment.GetString(), out var assignmentId) || assignmentId == Guid.Empty
+                        || !body.TryGetProperty("capability", out var cap) || cap.ValueKind != JsonValueKind.String || string.IsNullOrEmpty(cap.GetString())
+                        || (complete && (!body.TryGetProperty("outcome", out var o) || o.ValueKind != JsonValueKind.String || o.GetString() is not ("Correct" or "Incorrect"))))
+                        return IdentityHttp.Problem(context, 400, "InvalidRequest", "Invalid command");
+                    var view = await work.TransitionAsync(context.CurrentSubject(), id, assignmentId, cap.GetString()!,
+                        complete ? body.GetProperty("outcome").GetString() : null, version, key.ToString(), context.TraceIdentifier, ct);
+                    context.Response.Headers.ETag = $"\"{view.Version}\"";
+                    return Results.Json(view, CheckingJson.Options);
+                }
+                catch (JsonException) { return IdentityHttp.Problem(context, 400, "InvalidRequest", "Invalid command"); }
+            }));
+        }
         group.MapGet("/queues", (HttpContext context, ICheckingWork work, CancellationToken ct) => Guard(context, async () =>
         {
             var query = context.Request.Query;

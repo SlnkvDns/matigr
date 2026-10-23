@@ -13,6 +13,9 @@ public class CheckingHttpTests(IdentityTestFiles files) : IClassFixture<Identity
 {
     private sealed class WorkProbe : ICheckingWork
     {
+        public Task<CheckView> TransitionAsync(AuthenticatedSubject subject, Guid checkId, Guid assignmentId, string capability,
+            string? outcome, long expectedVersion, string key, string correlationId, CancellationToken ct)
+        { Subject(subject); return Task.FromResult(View); }
         public string? ActorId { get; private set; }
         public bool Unavailable { get; set; }
         public bool Empty { get; set; }
@@ -41,6 +44,28 @@ public class CheckingHttpTests(IdentityTestFiles files) : IClassFixture<Identity
         using var response = await client.PostAsJsonAsync("/dev/v1/session/select", new { testSubjectId = key });
         using var session = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", session.RootElement.GetProperty("accessToken").GetString());
+    }
+
+    [Theory]
+    [InlineData(null, 428)]
+    [InlineData("W/\"2\"", 400)]
+    [InlineData("\"2\"", 200)]
+    public async Task Verdict_routes_require_strong_version_and_trusted_owner_adapter(string? etag, int status)
+    {
+        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<ICheckingWork>(new WorkProbe())));
+        using var client = factory.CreateClient(); await SignIn(client);
+        foreach (var op in new[] { "complete", "refuse" })
+        {
+            using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/checking/checks/" + Guid.NewGuid() + "/" + op);
+            request.Headers.Add("Idempotency-Key", "test");
+            if (etag is not null) request.Headers.TryAddWithoutValidation("If-Match", etag);
+            request.Content = op == "complete"
+                ? JsonContent.Create(new { assignmentId = Guid.NewGuid(), capability = "secret", outcome = "Correct" })
+                : JsonContent.Create(new { assignmentId = Guid.NewGuid(), capability = "secret" });
+            using var response = await client.SendAsync(request);
+            Assert.Equal(status, (int)response.StatusCode);
+            Assert.True(response.Headers.CacheControl!.Private && response.Headers.CacheControl.NoStore);
+        }
     }
 
     [Theory]

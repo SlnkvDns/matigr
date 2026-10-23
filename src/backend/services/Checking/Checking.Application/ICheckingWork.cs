@@ -35,6 +35,8 @@ public static class CheckingJson
 
 public interface ICheckingWork
 {
+    Task<CheckView> TransitionAsync(AuthenticatedSubject subject, Guid checkId, Guid assignmentId, string capability,
+        string? outcome, long expectedVersion, string key, string correlationId, CancellationToken cancellationToken);
     Task<QueuePage> QueueAsync(AuthenticatedSubject subject, Guid tournamentId, string queue, string? cursor, CancellationToken cancellationToken);
     Task<TakeNextReply> TakeNextAsync(AuthenticatedSubject subject, Guid tournamentId, string queue, string key, string correlationId, CancellationToken cancellationToken);
     Task<AssignmentView?> MyAssignmentAsync(AuthenticatedSubject subject, CancellationToken cancellationToken);
