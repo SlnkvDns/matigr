@@ -40,7 +40,7 @@ npm ci --ignore-scripts --no-audit --no-fund
 npm run dev:web
 ```
 
-Единое приложение: [http://127.0.0.1:5173](http://127.0.0.1:5173). В CHK-FE-01 созданы навигация разделов, HTTP/ProblemDetails client и типы из OpenAPI; бизнес-экраны подключаются следующими задачами. Проверки: `npm run check:api`, `npm run typecheck:web`, `npm run test:web`, `npm run build:web`; они также входят в `scripts/check.ps1 -Restore` и CI. [Устройство frontend и границы текущего шага](src/frontend/apps/web/README.md).
+Единое приложение: [http://127.0.0.1:5173](http://127.0.0.1:5173). В CHK-FE-01/02 созданы навигация, HTTP/ProblemDetails client, типы из OpenAPI и выбор тестового пользователя через dev-issuer. Профиль приходит с сервера; токен хранится в памяти, смена пользователя очищает частное состояние. Переключатель виден только в dev-сборке. Бизнес-экраны подключаются следующими задачами. Проверки: `npm run check:api`, `npm run typecheck:web`, `npm run test:web`, `npm run build:web`; они также входят в `scripts/check.ps1 -Restore` и CI. [Устройство frontend и границы текущего шага](src/frontend/apps/web/README.md).
 
 ## Локальная инфраструктура
 

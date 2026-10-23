@@ -3,6 +3,8 @@ import { CheckingPage } from '../features/checking/CheckingPage';
 import { ResultsPage } from '../features/results/ResultsPage';
 import { AppealsPage } from '../features/appeals/AppealsPage';
 import { Page } from '../shared/ui/Page';
+import { PrivateSessionBoundary } from '../shared/auth/SessionContext';
+import { SessionPanel } from '../shared/auth/SessionPanel';
 
 function Layout() {
   return (
@@ -19,6 +21,7 @@ function Layout() {
           <NavLink to="/appeals">Апелляции</NavLink>
         </nav>
       </header>
+      <SessionPanel />
       <main id="main"><Outlet /></main>
       <footer className="app-footer"><span>Матигр</span><span>Математика объединяет</span></footer>
     </div>
@@ -31,8 +34,8 @@ export function AppRoutes() {
       <Route element={<Layout />}>
         <Route index element={<Navigate to="/results" replace />} />
         <Route path="results" element={<ResultsPage />} />
-        <Route path="checking" element={<CheckingPage />} />
-        <Route path="appeals" element={<AppealsPage />} />
+        <Route path="checking" element={<PrivateSessionBoundary><CheckingPage /></PrivateSessionBoundary>} />
+        <Route path="appeals" element={<PrivateSessionBoundary><AppealsPage /></PrivateSessionBoundary>} />
         <Route path="*" element={
           <Page title="Страница не найдена" description="Проверьте адрес или вернитесь к турнирной таблице.">
             <Link className="text-link" to="/results">К таблице <span aria-hidden="true">↗</span></Link>

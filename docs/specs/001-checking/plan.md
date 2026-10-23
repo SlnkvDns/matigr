@@ -16,9 +16,9 @@ Checking владеет проверкой A7: назначением, заня�
 
 Frontend: feature `checking` в единственном `src/frontend/apps/web`. Экран текущего назначения, защищённое чтение материала, Correct/Incorrect и отказ; обычная/старшая очереди видны по правам. При старте и возвращении GET текущего назначения; успешный отказ/завершение освобождает UI без ожидания Results. На неоднозначный сетевой ответ — повтор команды с прежним ключом и сверка GET. Поля комментария нет.
 
-CHK-FE-01: [единый frontend](../../../src/frontend/apps/web/README.md) создан с маршрутами трёх feature-модулей, сгенерированными HTTP DTO Checking и общим JSON/ProblemDetails transport. Пока это shell с явно неподключёнными разделами. Сессия/права, реальные очереди/вердикты, standings/SSE и апелляции реализуются отдельными задачами ниже; текущий UI их не имитирует.
+CHK-FE-01/02: [единый frontend](../../../src/frontend/apps/web/README.md) создан с маршрутами трёх feature-модулей, HTTP DTO Checking, общим JSON/ProblemDetails transport и переключением тестовых субъектов/profile через реальный issuer. Токен только в памяти; смена субъекта очищает частное состояние. Реальные очереди/вердикты, standings/SSE и апелляции реализуются отдельными задачами ниже; текущий UI их не имитирует.
 
-CHK-BE-04: [dev-выдача/profile и JWT verification contract](../../../contracts/authentication.md) реализованы отдельно от бизнес-модели. Серверные policies проверяют reviewer/senior и турнирный scope; владельца/назначение будут проверять handlers CHK-BE-05/06. Frontend-сессия остаётся CHK-FE-02.
+CHK-BE-04: [dev-выдача/profile и JWT verification contract](../../../contracts/authentication.md) реализованы отдельно от бизнес-модели. Серверные policies проверяют reviewer/senior и турнирный scope; владельца/назначение будут проверять handlers CHK-BE-05/06. Frontend-сессия подключена в CHK-FE-02.
 
 ## 2. Сущности и состояния
 

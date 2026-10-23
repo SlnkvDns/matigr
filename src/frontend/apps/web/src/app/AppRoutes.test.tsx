@@ -3,9 +3,10 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from './AppRoutes';
+import { SessionProvider } from '../shared/auth/SessionContext';
 
 function renderApp(path = '/') {
-  return render(<MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter>);
+  return render(<SessionProvider><MemoryRouter initialEntries={[path]}><AppRoutes /></MemoryRouter></SessionProvider>);
 }
 
 describe('single application navigation', () => {
