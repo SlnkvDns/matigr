@@ -14,6 +14,7 @@ function run(args, input) {
 const cfgResult = run(['config', '--format', 'json']);
 assert.equal(cfgResult.status, 0, cfgResult.stderr);
 const cfg = JSON.parse(cfgResult.stdout);
+assert.ok(cfg.services['checking-api'].volumes.some(v => v.target === '/fixtures' && v.read_only));
 for (const service of ['checking', 'results', 'appeals']) {
   const db = cfg.services[`${service}-db`];
   assert.deepEqual(Object.keys(db.networks), [`${service}-data`]);
@@ -59,4 +60,10 @@ for (const service of ['checking', 'results', 'appeals']) {
 const response = await fetch('http://127.0.0.1:5101/health/ready', { signal: AbortSignal.timeout(5000) });
 assert.equal(response.status, 200);
 assert.deepEqual(await response.json(), { status: 'Ready', database: true, broker: true });
-console.log('Infrastructure: 3 own DB connections, 6 rejected cross-service connections, isolated networks/volumes, durable routing, producer permissions, Checking readiness: OK');
+const fixtureHash = run(['exec', '-T', 'checking-api', 'sha256sum', '/fixtures/manifest.json']);
+assert.equal(fixtureHash.status, 0);
+assert.equal(fixtureHash.stdout.split(/\s/)[0], (await readFile(path.join(root, 'infra/fixtures/manifest.sha256'), 'utf8')).trim());
+const processIdentity = run(['exec', '-T', 'checking-api', 'sh', '-c', 'grep "^Uid:" /proc/1/status']);
+assert.equal(processIdentity.status, 0);
+assert.match(processIdentity.stdout, /^Uid:\s+1654\s+1654\s+1654\s+1654/m);
+console.log('Infrastructure: 3 own DB connections, 6 rejected cross-service connections, isolated networks/volumes, durable routing, producer permissions, Checking readiness, read-only fixtures, non-root API: OK');

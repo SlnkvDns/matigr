@@ -1,0 +1,194 @@
+{
+  "fixtureVersion": "1",
+  "tournament": {
+    "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+    "name": "Matigr — локальный тестовый турнир",
+    "initialAppealWindow": "Open"
+  },
+  "teams": [
+    {
+      "teamId": "ce3eb69e-e2b8-5f58-a45c-40c9d71d0031",
+      "name": "Альфа"
+    },
+    {
+      "teamId": "dd009e18-2815-5a3e-9741-03660dee8801",
+      "name": "Бета"
+    },
+    {
+      "teamId": "7c4967f0-88fe-507a-a2c9-30c0559b17d3",
+      "name": "Гамма"
+    }
+  ],
+  "tasks": [
+    {
+      "taskId": "acdc6594-8ac1-5f18-bb65-def577a79950",
+      "name": "Задача 1",
+      "order": 1,
+      "points": "10",
+      "scoreRuleVersion": "1"
+    },
+    {
+      "taskId": "11bf5e9e-d65b-5d67-b25f-ada9c2cfbcff",
+      "name": "Задача 2",
+      "order": 2,
+      "points": "20",
+      "scoreRuleVersion": "1"
+    }
+  ],
+  "subjects": [
+    {
+      "testSubjectId": "jury-a",
+      "subjectId": "6b8e3a04-ab14-5bdd-92cc-4a767e67f29b",
+      "displayName": "jury-a",
+      "roles": [
+        "Jury"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ]
+    },
+    {
+      "testSubjectId": "jury-b",
+      "subjectId": "1c703f94-47b3-5f22-9d09-3c9d641c4322",
+      "displayName": "jury-b",
+      "roles": [
+        "Jury"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ]
+    },
+    {
+      "testSubjectId": "senior",
+      "subjectId": "6adf74af-fc84-5afb-8708-0db40939d2ff",
+      "displayName": "senior",
+      "roles": [
+        "Senior"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ]
+    },
+    {
+      "testSubjectId": "organizer",
+      "subjectId": "f144899d-93a5-5525-8d87-0f38f3d885e5",
+      "displayName": "organizer",
+      "roles": [
+        "Organizer"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ]
+    },
+    {
+      "testSubjectId": "team-alpha",
+      "subjectId": "c79afaa3-3e4f-5d38-a6bf-754cde6f45ec",
+      "displayName": "Альфа",
+      "roles": [
+        "Team"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ],
+      "teamId": "ce3eb69e-e2b8-5f58-a45c-40c9d71d0031"
+    },
+    {
+      "testSubjectId": "team-beta",
+      "subjectId": "432794f5-020d-574a-844c-d6040c7ee613",
+      "displayName": "Бета",
+      "roles": [
+        "Team"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ],
+      "teamId": "dd009e18-2815-5a3e-9741-03660dee8801"
+    },
+    {
+      "testSubjectId": "team-gamma",
+      "subjectId": "2b27e333-c37d-5e5e-897b-2d71ef5653ea",
+      "displayName": "Гамма",
+      "roles": [
+        "Team"
+      ],
+      "tournamentIds": [
+        "0344e06b-4ea1-582e-bd91-e832719773f2"
+      ],
+      "teamId": "7c4967f0-88fe-507a-a2c9-30c0559b17d3"
+    }
+  ],
+  "solutions": [
+    {
+      "solutionId": "19537a57-dbab-56eb-a167-e04a7b3104fe",
+      "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+      "teamId": "ce3eb69e-e2b8-5f58-a45c-40c9d71d0031",
+      "taskId": "acdc6594-8ac1-5f18-bb65-def577a79950",
+      "materialVersionId": "3be2c5aa-ff91-5af7-8649-edfeebebd0fc",
+      "materialRef": "prepared:solution-1",
+      "materialFile": "materials/solution-1.txt",
+      "materialSha256": "8175b5cb6b037c0affcc0c70942b5f8cf9d4e9e8c54b3f93c5f24b0c8804518d",
+      "acceptedAt": "2026-10-23T03:00:00Z",
+      "sourceVersion": "1"
+    },
+    {
+      "solutionId": "33669db4-b6cc-5e42-95ab-d927c56c80fd",
+      "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+      "teamId": "ce3eb69e-e2b8-5f58-a45c-40c9d71d0031",
+      "taskId": "11bf5e9e-d65b-5d67-b25f-ada9c2cfbcff",
+      "materialVersionId": "d42cd117-cab7-53bf-a322-1a9b59109edc",
+      "materialRef": "prepared:solution-2",
+      "materialFile": "materials/solution-2.txt",
+      "materialSha256": "eb425a2732bbc2c9b104a5c709b595ea3c7abf0982fb4327ee2db81aa1d59a37",
+      "acceptedAt": "2026-10-23T03:00:00Z",
+      "sourceVersion": "1"
+    },
+    {
+      "solutionId": "1d96326c-3bc3-595b-89a5-baf6cf241efc",
+      "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+      "teamId": "dd009e18-2815-5a3e-9741-03660dee8801",
+      "taskId": "acdc6594-8ac1-5f18-bb65-def577a79950",
+      "materialVersionId": "b32c9693-4cac-55ec-af3e-dd2ea9588bc8",
+      "materialRef": "prepared:solution-3",
+      "materialFile": "materials/solution-3.txt",
+      "materialSha256": "bb89043bbb352da82cad9ea83cc85b0fcf8ba654ca8c75f7a5bc1b129fcda6c7",
+      "acceptedAt": "2026-10-23T03:00:00Z",
+      "sourceVersion": "1"
+    },
+    {
+      "solutionId": "0514498b-0bcf-57cd-b4e4-f225ed739402",
+      "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+      "teamId": "dd009e18-2815-5a3e-9741-03660dee8801",
+      "taskId": "11bf5e9e-d65b-5d67-b25f-ada9c2cfbcff",
+      "materialVersionId": "bc6cf2cb-aeb7-5f81-8760-dd127a6797a4",
+      "materialRef": "prepared:solution-4",
+      "materialFile": "materials/solution-4.txt",
+      "materialSha256": "59cfeb4adb3c94bc61a8c3d7d4541300ea183de333aa24013e6604405aaaf1a4",
+      "acceptedAt": "2026-10-23T03:00:00Z",
+      "sourceVersion": "1"
+    },
+    {
+      "solutionId": "fe40369b-4945-570c-b12b-497c54925700",
+      "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+      "teamId": "7c4967f0-88fe-507a-a2c9-30c0559b17d3",
+      "taskId": "acdc6594-8ac1-5f18-bb65-def577a79950",
+      "materialVersionId": "ffba0a4a-f9fc-5c11-bd1e-531cbb5d5d6e",
+      "materialRef": "prepared:solution-5",
+      "materialFile": "materials/solution-5.txt",
+      "materialSha256": "b5a524a6e607570473dfd785c9413e4c0e1bc576a8d2b170aa5a0498a6a1618c",
+      "acceptedAt": "2026-10-23T03:00:00Z",
+      "sourceVersion": "1"
+    },
+    {
+      "solutionId": "413e6468-18f8-5c79-8d7c-d90f9eecd914",
+      "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+      "teamId": "7c4967f0-88fe-507a-a2c9-30c0559b17d3",
+      "taskId": "11bf5e9e-d65b-5d67-b25f-ada9c2cfbcff",
+      "materialVersionId": "c4b39c85-96f2-524c-a878-74d78bdd9f27",
+      "materialRef": "prepared:solution-6",
+      "materialFile": "materials/solution-6.txt",
+      "materialSha256": "093afbadf6468ddebde1c60409cd8f77889b863fc2be4fdbe766164efbbcc6de",
+      "acceptedAt": "2026-10-23T03:00:00Z",
+      "sourceVersion": "1"
+    }
+  ]
+}

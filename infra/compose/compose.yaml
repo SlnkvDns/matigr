@@ -69,6 +69,9 @@ services:
       ASPNETCORE_HTTP_PORTS: '8080'
       Broker__Host: rabbitmq
       Broker__Username: checking
+      Fixtures__Directory: /fixtures
+    volumes:
+      - ../fixtures:/fixtures:ro
     secrets: [checking_db_password, checking_broker_password]
     networks: [checking-data, transport]
     ports: ['127.0.0.1:5101:8080']

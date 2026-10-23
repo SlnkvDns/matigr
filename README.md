@@ -34,3 +34,12 @@ node scripts/check-infrastructure.mjs
 Три PostgreSQL не публикуют порты хоста и используют отдельные сети, volumes и credentials. Локальная проверка проверяет все 6 запретов чужих credentials, durable bindings RabbitMQ и готовность Checking. Отдельных API Results/Appeals пока нет. Checking слушает `http://127.0.0.1:5101`, RabbitMQ management — `http://127.0.0.1:15672`; пароли случайны, находятся в игнорируемом `.local/secrets`. Приложение после чтения Compose secrets запускается как непривилегированный `app`.
 
 Остановить контейнеры с сохранением данных: `docker compose -f infra/compose/compose.yaml down`. Не удаляйте volumes/секреты для обычного перезапуска.
+
+## Фикстуры
+
+```sh
+node scripts/prepare-fixtures.mjs
+node --test tests/fixtures/fixtures.test.mjs
+```
+
+[Общий манифест](infra/fixtures/manifest.json) содержит согласованные тестовые стоимости 10/20, стабильные субъекты и шесть уже принятых ссылок на материал. Подготовка сверяет SHA-256 и создаёт устойчивые локальные ключи; материал монтируется в Checking только для чтения. Повтор не меняет ключи. [Границы bootstrap и хранения](infra/fixtures/README.md). Эта команда не создаёт проверки в БД: внутренний bootstrap относится к CHK-BE-03.

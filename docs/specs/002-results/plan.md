@@ -33,7 +33,7 @@ Frontend feature `results` в общем React/TypeScript/Vite app: аноним
 | Published vN | Другая/устаревшая база или чужой материал | Результат без изменения, Rejected и наблюдаемый конфликт |
 | Любое | Временно нет зависимости/инфраструктуры | Обработка Deferred/Retrying вне успешного receipt; результата «0 по умолчанию» нет |
 
-Correct → полная фиксированная стоимость; Incorrect → 0. Нет результата — отдельная ячейка, а не Incorrect. Итог — сумма опубликованных вкладов, равенство сумм даёт одно место, нумерация 1,1,2. Вместе с планом принят вариант: пустая сумма=0 и отдельный pending status, не равный Incorrect. Конкретные баллы/точность остаются Q09. Если outcome меняется при одинаковом score, это всё равно новая бизнес-версия.
+Correct → полная фиксированная стоимость; Incorrect → 0. Нет результата — отдельная ячейка, а не Incorrect. Итог — сумма опубликованных вкладов, равенство сумм даёт одно место, нумерация 1,1,2. Вместе с планом принят вариант: пустая сумма=0 и отдельный pending status, не равный Incorrect. Q09 локального профиля уточнён пользователем при реализации: 10/20 целых баллов, строки JSON; [технический профиль T07](../../architecture/runtime-baseline.md). Если outcome меняется при одинаковом score, это всё равно новая бизнес-версия.
 
 ## 3. Схема хранения
 
@@ -49,7 +49,7 @@ Correct → полная фиксированная стоимость; Incorrec
 | tournament_snapshots | PK tournament_id; snapshot_version, updated_at; строка блокировки порядка видимых commit турнира |
 | inbox / outbox / processing_failures | Общее назначение из контракта; inbox UNIQUE(consumer,message_id); deferred/карантин с raw envelope и причиной |
 
-Точные баллы — точный тип PostgreSQL, без float/double; scale и JSON-представление согласовать по Q09/T07 до миграций/fixtures. Версии — bigint с безопасным сериализатором. Индексы: results(tournament_id,team_id), receipts по appealId/requestId, outbox(status,next_attempt). Вычисляемые totals/ranks не хранятся как обновляемые фронтендом строки.
+Точные баллы — точный тип PostgreSQL, без float/double; для согласованного целочисленного профиля выбран numeric(28,0), баллы/версии передаются десятичными строками по [T07](../../architecture/runtime-baseline.md). Версии — bigint с безопасным сериализатором. Индексы: results(tournament_id,team_id), receipts по appealId/requestId, outbox(status,next_attempt). Вычисляемые totals/ranks не хранятся как обновляемые фронтендом строки.
 
 ## 4. REST API и онлайн-обновление
 
@@ -106,8 +106,8 @@ Snapshot GET читает roster/results/snapshotVersion в одной согл�
 | Frontend integration/contract | SSE handshake/GET gap/reconnect/старая версия, никакой утечки через public DTO/SSE, стабильный контракт внутреннего основания и семи сообщений; RS-A11/12/19/21 |
 | E2E | V1 анонимная таблица после вердикта, V4 изменение места нескольких команд и no-op закрытие, V6 потеря соединения/рестарт/late completion; все три сервиса и браузер |
 
-Integration выполняются на PostgreSQL и настоящем broker из изолированного окружения, не in-memory ORM. Проверки отслеживают версии/IDs и eventual convergence, не fixed sleep. Query/performance smoke измеряет выбранную сериализацию, но нагрузочный бюджет требует Q10. Точные fixture-баллы/ожидания pending задаются после Q09, не произвольными production-правилами.
+Integration выполняются на PostgreSQL и настоящем broker из изолированного окружения, не in-memory ORM. Проверки отслеживают версии/IDs и eventual convergence, не fixed sleep. Query/performance smoke измеряет выбранную сериализацию, но нагрузочный бюджет требует Q10. Fixture v1 использует согласованные 10/20 целых баллов, pending без score и пустую сумму "0"; это локальный тестовый профиль.
 
 ## 9. Решения до реализации
 
-Приняты SSE T04, общая snapshot lock/query read side и отображение pending/пустой суммы. Остались Q09 — конкретная шкала/fixture/точность; Q10 — объём/лаг; Q13 — точные версии/retention/эксплуатационные параметры. Публичные поля ограничиваются уже согласованной таблицей; Q16 не разрешает публиковать историю/авторов. Все проверки совместимости включены в [общую матрицу](../../architecture/implementation-contracts.md#5-проверка-согласованности).
+Приняты SSE T04, общая snapshot lock/query read side и отображение pending/пустой суммы. Q09 для локальных fixtures уточнён явно (10/20 целых, строки JSON); версии T02/T03 закреплены в CHK-INF-01. Остаются Q10 — объём/лаг; Q13 — retention/эксплуатационные параметры. Публичные поля ограничиваются уже согласованной таблицей; Q16 не разрешает публиковать историю/авторов. Все проверки совместимости включены в [общую матрицу](../../architecture/implementation-contracts.md#5-проверка-согласованности).

@@ -8,6 +8,12 @@ try {
     $env:NUGET_PACKAGES = "$repo/.local/nuget"
     node scripts/check-architecture.mjs
     if ($LASTEXITCODE) { throw 'Architecture check failed' }
+    node scripts/check-docs.mjs
+    if ($LASTEXITCODE) { throw 'Documentation check failed' }
+    node scripts/prepare-fixtures.mjs
+    if ($LASTEXITCODE) { throw 'Fixture preparation failed' }
+    node --test tests/fixtures/fixtures.test.mjs
+    if ($LASTEXITCODE) { throw 'Fixture tests failed' }
     if ($Restore) {
         & $dotnet restore src/backend/Matigr.slnx --locked-mode
         if ($LASTEXITCODE) { throw 'Restore failed' }
