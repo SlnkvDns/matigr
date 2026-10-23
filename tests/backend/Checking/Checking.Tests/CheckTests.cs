@@ -2,7 +2,7 @@ using Matigr.Checking.Domain;
 
 namespace Matigr.Checking.Tests;
 
-public sealed class CheckTests
+public sealed partial class CheckTests
 {
     [Fact]
     public void Restored_senior_queue_assigns_same_appeal_at_next_version_and_keeps_origin_lineage()
