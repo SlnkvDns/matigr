@@ -22,3 +22,15 @@ dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
 ```
 
 В CI те же команды. Lock-файлы отслеживаются Git. Ветка реализации — `codex/implementation-v0`; изменения фиксируются отдельными коммитами по проверенным шагам. Текущие health endpoints не означают готовность бизнес-сценариев V1–V6.
+
+## Локальная инфраструктура
+
+```sh
+node scripts/init-local.mjs
+docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
+node scripts/check-infrastructure.mjs
+```
+
+Три PostgreSQL не публикуют порты хоста и используют отдельные сети, volumes и credentials. Локальная проверка проверяет все 6 запретов чужих credentials, durable bindings RabbitMQ и готовность Checking. Отдельных API Results/Appeals пока нет. Checking слушает `http://127.0.0.1:5101`, RabbitMQ management — `http://127.0.0.1:15672`; пароли случайны, находятся в игнорируемом `.local/secrets`. Приложение после чтения Compose secrets запускается как непривилегированный `app`.
+
+Остановить контейнеры с сохранением данных: `docker compose -f infra/compose/compose.yaml down`. Не удаляйте volumes/секреты для обычного перезапуска.

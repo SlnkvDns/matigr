@@ -6,3 +6,7 @@
 *.cs text eol=lf
 *.csproj text eol=lf
 *.md text eol=lf
+*.mjs text eol=lf
+*.ps1 text eol=lf
+*.slnx text eol=lf
+infra/fixtures/** text eol=lf

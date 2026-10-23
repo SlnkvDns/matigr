@@ -1,0 +1,97 @@
+name: matigr
+services:
+  checking-db:
+    image: postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: checking_db
+      POSTGRES_USER: checking_app
+      POSTGRES_PASSWORD_FILE: /run/secrets/checking_db_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [checking_db_password]
+    volumes: [checking-data:/var/lib/postgresql]
+    networks: [checking-data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U checking_app -d checking_db']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  results-db:
+    image: postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: results_db
+      POSTGRES_USER: results_app
+      POSTGRES_PASSWORD_FILE: /run/secrets/results_db_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [results_db_password]
+    volumes: [results-data:/var/lib/postgresql]
+    networks: [results-data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U results_app -d results_db']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  appeals-db:
+    image: postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: appeals_db
+      POSTGRES_USER: appeals_app
+      POSTGRES_PASSWORD_FILE: /run/secrets/appeals_db_password
+      POSTGRES_INITDB_ARGS: --auth-host=scram-sha-256
+    secrets: [appeals_db_password]
+    volumes: [appeals-data:/var/lib/postgresql]
+    networks: [appeals-data]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U appeals_app -d appeals_db']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  rabbitmq:
+    image: rabbitmq:4.3.6-management@sha256:54cb013d76cd1fd6c0a0708f34062ad61c452bb6f016b434c6c33f1a765d2b58
+    hostname: matigr-rabbitmq
+    networks: [transport]
+    ports: ['127.0.0.1:15672:15672']
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+      - ./rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf:ro
+      - ../../.local/rabbitmq-definitions.json:/etc/rabbitmq/definitions.json:ro
+    healthcheck:
+      test: [CMD, rabbitmq-diagnostics, -q, ping]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+  checking-api:
+    image: matigr-checking-api:v0
+    build:
+      context: ../..
+      dockerfile: infra/compose/Checking.Dockerfile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Local
+      ASPNETCORE_HTTP_PORTS: '8080'
+      Broker__Host: rabbitmq
+      Broker__Username: checking
+    secrets: [checking_db_password, checking_broker_password]
+    networks: [checking-data, transport]
+    ports: ['127.0.0.1:5101:8080']
+    depends_on:
+      checking-db: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+    healthcheck:
+      test: [CMD-SHELL, 'bash -c "exec 3<>/dev/tcp/127.0.0.1/8080; printf ''GET /health/ready HTTP/1.0\r\nHost: localhost\r\n\r\n'' >&3; head -n 1 <&3 | grep -q '' 200 ''"']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+secrets:
+  checking_db_password: { file: ../../.local/secrets/checking_db_password }
+  results_db_password: { file: ../../.local/secrets/results_db_password }
+  appeals_db_password: { file: ../../.local/secrets/appeals_db_password }
+  checking_broker_password: { file: ../../.local/secrets/checking_broker_password }
+networks:
+  checking-data: { internal: true }
+  results-data: { internal: true }
+  appeals-data: { internal: true }
+  transport: {}
+volumes:
+  checking-data: {}
+  results-data: {}
+  appeals-data: {}
+  rabbitmq-data: {}

@@ -1,0 +1,8 @@
+.git
+.tools
+.local
+**/bin
+**/obj
+**/node_modules
+**/TestResults
+**/dist
