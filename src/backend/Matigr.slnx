@@ -5,8 +5,18 @@
     <Project Path="services/Checking/Checking.Domain/Checking.Domain.csproj" />
     <Project Path="services/Checking/Checking.Infrastructure/Checking.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/Results/">
+    <Project Path="services/Results/Results.Api/Results.Api.csproj" />
+    <Project Path="services/Results/Results.Application/Results.Application.csproj" />
+    <Project Path="services/Results/Results.Domain/Results.Domain.csproj" />
+    <Project Path="services/Results/Results.Infrastructure/Results.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Tests/Checking/">
     <Project Path="../../tests/backend/Checking/Checking.Tests/Checking.Tests.csproj" />
     <Project Path="../../tests/backend/Checking/Checking.Api.Tests/Checking.Api.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Results/">
+    <Project Path="../../tests/backend/Results/Results.Tests/Results.Tests.csproj" />
+    <Project Path="../../tests/backend/Results/Results.Api.Tests/Results.Api.Tests.csproj" />
   </Folder>
 </Solution>
