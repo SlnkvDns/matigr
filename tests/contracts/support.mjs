@@ -7,7 +7,9 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 
 export const root = path.resolve(import.meta.dirname, '../..');
 export async function json(file) { return JSON.parse(await readFile(path.join(root, file), 'utf8')); }
-export const catalog = await json('contracts/events/checking/catalog.json');
+export const checkingCatalog = await json('contracts/events/checking/catalog.json');
+export const resultsCatalog = await json('contracts/events/results/catalog.json');
+export const catalog = [...checkingCatalog, ...resultsCatalog];
 const ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true, coerceTypes: false });
 addFormats(ajv);
 export const schemas = new Map();
@@ -26,7 +28,8 @@ export function validateMessage(name, message, { producer = false } = {}) {
   assert.ok(validator(message), `${name}: ${ajv.errorsText(validator.errors)}`);
   const payload = message.payload;
   const aggregateId = name === 'RecheckRequested' ? payload.appealId
-    : name === 'RecheckRequestRejected' ? payload.recheckRequestId : payload.checkId;
+    : name === 'RecheckRequestRejected' ? payload.recheckRequestId
+      : name === 'ResultEvaluationApplied' || name === 'ResultEvaluationRejected' ? payload.evaluationId : payload.checkId;
   assert.equal(message.aggregateId, aggregateId, 'Envelope aggregate identity mismatch');
   if (name === 'RecheckAssigned' && payload.assignmentKind === 'Selected')
     assert.equal(payload.reviewerId, payload.selectedReviewerId, 'Selected reviewer mismatch');
@@ -44,8 +47,10 @@ export function validateMessage(name, message, { producer = false } = {}) {
   return message;
 }
 
-export const openapiPath = path.join(root, 'contracts/http/checking/openapi.json');
-export const openapi = await SwaggerParser.validate(openapiPath, { resolve: { http: false } });
+export const checkingOpenapiPath = path.join(root, 'contracts/http/checking/openapi.json');
+export const resultsOpenapiPath = path.join(root, 'contracts/http/results/openapi.json');
+export const openapi = await SwaggerParser.validate(checkingOpenapiPath, { resolve: { http: false } });
+export const resultsOpenapi = await SwaggerParser.validate(resultsOpenapiPath, { resolve: { http: false } });
 const httpAjv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true, coerceTypes: false });
 addFormats(httpAjv);
 function rewriteHttpRefs(value) {
@@ -64,8 +69,23 @@ export function validateHttp(name, value) {
   assert.ok(validator(value), `${name}: ${httpAjv.errorsText(validator.errors)}`);
   return value;
 }
+const resultsHttpRoot = { $id: 'urn:matigr:results:http:v1', $defs: rewriteHttpRefs(resultsOpenapi.components.schemas) };
+httpAjv.addSchema(resultsHttpRoot);
+const resultsHttpValidators = new Map(Object.keys(resultsHttpRoot.$defs).map(name =>
+  [name, httpAjv.compile({ $ref: `${resultsHttpRoot.$id}#/$defs/${name}` })]));
+export function validateResultsHttp(name, value) {
+  const validator = resultsHttpValidators.get(name);
+  assert.ok(validator, `Unknown Results HTTP schema ${name}`);
+  assert.ok(validator(value), `${name}: ${httpAjv.errorsText(validator.errors)}`);
+  return value;
+}
 export function resolveObject(value) {
   if (!value?.$ref) return value;
   assert.ok(value.$ref.startsWith('#/'), 'Only local OpenAPI refs are permitted');
   return resolveObject(value.$ref.slice(2).split('/').reduce((object, key) => object[key], openapi));
+}
+export function resolveResultsObject(value) {
+  if (!value?.$ref) return value;
+  assert.ok(value.$ref.startsWith('#/'), 'Only local Results OpenAPI refs are permitted');
+  return resolveResultsObject(value.$ref.slice(2).split('/').reduce((object, key) => object[key], resultsOpenapi));
 }

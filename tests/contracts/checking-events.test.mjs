@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { catalog, schemas, json, validateMessage } from './support.mjs';
+import { checkingCatalog, schemas, json, validateMessage } from './support.mjs';
 
 const cases = [
   ['CheckCompleted', 'checking/check-completed.initial.json'],
@@ -142,14 +142,14 @@ test('readers tolerate optional additive fields while producer output rejects un
 });
 test('published routing agrees with actual Compose bindings and separate completion queues', async () => {
   const topology = await json('infra/compose/topology.json');
-  for (const contract of catalog) {
+  for (const contract of checkingCatalog) {
     for (const route of contract.routes) assert.ok(topology.bindings.some(b => b.key === route), `Missing binding ${route}`);
   }
   const initialQueues = topology.bindings.filter(b => b.key === 'checking.check-completed.initial.v1').map(b => b.queue);
   const appealQueues = topology.bindings.filter(b => b.key === 'checking.check-completed.appeal.v1').map(b => b.queue);
   assert.deepEqual(initialQueues, ['results.check-completed.v1']);
   assert.deepEqual(new Set(appealQueues), new Set(['results.check-completed.v1', 'appeals.checking-facts.v1']));
-  assert.equal(catalog.filter(c => c.direction === 'outgoing').length, 4);
-  assert.equal(catalog.filter(c => c.direction === 'incoming').length, 1);
-  assert.equal(catalog.find(c => c.name === 'RecheckRequested').producer, 'Appeals');
+  assert.equal(checkingCatalog.filter(c => c.direction === 'outgoing').length, 4);
+  assert.equal(checkingCatalog.filter(c => c.direction === 'incoming').length, 1);
+  assert.equal(checkingCatalog.find(c => c.name === 'RecheckRequested').producer, 'Appeals');
 });

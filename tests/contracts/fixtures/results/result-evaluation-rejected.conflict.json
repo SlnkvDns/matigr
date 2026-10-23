@@ -1,0 +1,32 @@
+{
+  "messageId": "results-rejected-message",
+  "messageType": "matigr.results.result-evaluation-rejected",
+  "schemaVersion": 1,
+  "producer": "Results",
+  "occurredAt": "2026-10-23T05:21:00Z",
+  "aggregateType": "EvaluationReceipt",
+  "aggregateId": "check-appeal-stale-1",
+  "aggregateVersion": "1",
+  "correlationId": "appeal-stale-1",
+  "causationId": "check-completed-message-stale-1",
+  "payload": {
+    "evaluationId": "check-appeal-stale-1",
+    "kind": "Appeal",
+    "reviewerId": "jury-b",
+    "assignmentId": "assignment-appeal-stale-1",
+    "evaluationDecisionOrigin": "AppealReview",
+    "tournamentId": "tournament-1",
+    "teamId": "team-b",
+    "taskId": "task-1",
+    "solutionId": "solution-team-b-task-1",
+    "resultId": "result-team-b-task-1",
+    "expectedResultVersion": "1",
+    "actualResultVersion": "2",
+    "reasonCode": "ResultVersionConflict",
+    "rejectedAt": "2026-10-23T05:20:59Z",
+    "appealId": "appeal-stale-1",
+    "recheckRequestId": "recheck-request-stale-1",
+    "baseCheckId": "check-initial-team-b-task-1",
+    "selectedReviewerId": "jury-b"
+  }
+}

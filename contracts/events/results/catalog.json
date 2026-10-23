@@ -1,0 +1,39 @@
+[
+  {
+    "name": "CheckCompleted",
+    "schema": "contracts/events/results/consumers/check-completed.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Checking",
+    "routes": [
+      "checking.check-completed.initial.v1",
+      "checking.check-completed.appeal.v1"
+    ],
+    "consumers": [
+      "Results"
+    ]
+  },
+  {
+    "name": "ResultEvaluationApplied",
+    "schema": "contracts/events/results/result-evaluation-applied.v1.schema.json",
+    "direction": "outgoing",
+    "producer": "Results",
+    "routes": [
+      "results.result-evaluation-applied.appeal.v1"
+    ],
+    "consumers": [
+      "Appeals"
+    ]
+  },
+  {
+    "name": "ResultEvaluationRejected",
+    "schema": "contracts/events/results/result-evaluation-rejected.v1.schema.json",
+    "direction": "outgoing",
+    "producer": "Results",
+    "routes": [
+      "results.result-evaluation-rejected.appeal.v1"
+    ],
+    "consumers": [
+      "Appeals"
+    ]
+  }
+]

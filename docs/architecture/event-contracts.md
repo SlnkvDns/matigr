@@ -108,7 +108,9 @@ Appeals проверяет requestId, основание, selectedReviewerId и 
 
 ### 4.5. ResultEvaluationApplied
 
-Поля: evaluationId (= checkId), kind, фактический reviewerId/assignmentId, evaluationDecisionOrigin из CheckCompleted, solutionId/materialVersionId, ключ турнира/команды/задачи, resultId/expectedResultVersion/resultVersion, previousOutcome/outcome/previousScore/score, scoreRuleVersion, changed, appliedAt, publicationId/publicationState. Для SeniorEscalation обязателен escalationId.
+Каноническая wire-схема опубликована в [ResultEvaluationApplied schema](../../contracts/events/results/result-evaluation-applied.v1.schema.json). Поля: evaluationId (= checkId), kind=Appeal, фактический reviewerId/assignmentId, evaluationDecisionOrigin из CheckCompleted, solutionId/materialVersionId, ключ турнира/команды/задачи, resultId/expectedResultVersion/resultVersion, previousOutcome/outcome/previousScore/score, scoreRuleVersion, changed, appliedAt, publicationId/publicationState. Для апелляции также обязательны appealId, recheckRequestId, baseCheckId, selectedReviewerId и basePublicationId. `basePublicationId` сохраняет исходный publicationId основания CheckCompleted; `publicationId` — итоговая доступная публикация. Для SeniorEscalation обязателен escalationId.
+
+В envelope receipt использует `aggregateType=EvaluationReceipt`, `aggregateId=evaluationId`, `aggregateVersion="1"`: один терминальный receipt на evaluationId, повторы публикуют тот же receipt, не новую версию. Результат initial остаётся локальной записью Results и не маршрутизируется в Appeals.
 
 Для апелляции обязательны appealId, recheckRequestId, baseCheckId и исходный selectedReviewerId. Для Initial поля апелляции отсутствуют, previousOutcome/previousScore могут отсутствовать.
 
@@ -116,7 +118,7 @@ Appeals сопоставляет selectedReviewerId исходному выбо�
 
 По согласованному D06/Q01 Results автоматически публикует результат, включая коррекцию по апелляции. В успешном `ResultEvaluationApplied` publicationId обязателен и относится к доступной итоговой опубликованной версии; publicationState имеет значение Published. Pending/unpublished не являются успешным подтверждением этого контракта в MVP. Ссылка на исходную публикацию апелляции сохраняется отдельно в её основании и не подменяется итоговой.
 
-`changed=false` допустимо: проверка зарегистрирована как обработанная и ссылается на ту же актуальную версию результата; resultVersion может остаться прежней, но receipt по evaluationId обязателен. Если outcome изменился при неизменном числовом score, это всё равно изменение бизнес-результата: `changed` относится к авторитетным полям результата, а не только к сумме.
+`changed=false` допустимо: проверка зарегистрирована как обработанная и ссылается на ту же актуальную версию результата; resultVersion и итоговый `publicationId` совпадают с основой, но receipt по evaluationId обязателен. Если outcome изменился при неизменном числовом score, это всё равно изменение бизнес-результата: `changed` относится к авторитетным полям результата, а не только к сумме.
 
 `changed=true` означает новую версию результата и её автоматическую публикацию. Повтор evaluationId возвращает ранее зафиксированное подтверждение без новой версии, повторного начисления или нового publishedAt. При changed=false сохраняется исходная публикация и её время. История обработки с полученным scoreRuleVersion сохраняется. D10 ограничивает подачу концом турнира; D13 запрещает следующую апелляцию после уже зарегистрированной независимо от новой версии или времени. Коррекция и повтор сообщения не обнуляют квоту и не создают новый срок.
 
@@ -124,7 +126,7 @@ Appeals сопоставляет selectedReviewerId исходному выбо�
 
 ### 4.6. ResultEvaluationRejected
 
-Поля: evaluationId, kind, фактический reviewerId/assignmentId/evaluationDecisionOrigin, ключ турнира/команды/задачи, solutionId, resultId (если существует), expectedResultVersion/actualResultVersion (если существует), reasonCode/rejectedAt. Для апелляции — appealId/recheckRequestId/baseCheckId/selectedReviewerId, для SeniorEscalation — escalationId. Корреляция учитывает разрешённую передачу, не только исходного выбранного.
+Каноническая wire-схема опубликована в [ResultEvaluationRejected schema](../../contracts/events/results/result-evaluation-rejected.v1.schema.json). Поля: evaluationId, kind=Appeal, фактический reviewerId/assignmentId/evaluationDecisionOrigin, ключ турнира/команды/задачи, solutionId, resultId (если существует), expectedResultVersion/actualResultVersion (если существует), reasonCode/rejectedAt, appealId/recheckRequestId/baseCheckId/selectedReviewerId; для SeniorEscalation — escalationId. Корреляция учитывает разрешённую передачу, не только исходного выбранного. Точный набор reasonCode оставлен открытым до утверждения категорий; схема не закрепляет произвольный enum.
 
 Категории: конфликт базовой версии, неизвестное правило начисления, неверная связь решения/результата, нарушение запрета повторной отправки D01. Отличать невалидный payload, постоянный бизнес-конфликт и временно отсутствующую зависимость. Отсутствие первичного результата из-за перестановки событий сначала требует ожидания/проверки зависимости, а не немедленного окончательного отказа.
 

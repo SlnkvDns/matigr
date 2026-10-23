@@ -2,7 +2,7 @@
 
 Актуализация 23 октября 2026 года: пользователь явно поручил реализацию по утверждённым документам, начиная с V0 / CHK-INF-01, с соблюдением зависимостей. Одобрение планов сохраняется; прежние фразы о непорученной реализации ниже описывают состояние при согласовании. Текущее выполнение и проверки — в [журнале реализации](../../implementation/progress.md).
 
-Статус: **одобрены пользователем 23 октября 2026 года** вместе с планами и задачами двух других сервисов. RES-INF-01 выполнена в рамках поручения реализации; остальные задачи реализации открыты. Основания — [plan.md](plan.md), [одобренная спецификация](spec.md), [общие контракты/V0–V6](../../architecture/implementation-contracts.md).
+Статус: **одобрены пользователем 23 октября 2026 года** вместе с планами и задачами двух других сервисов. RES-INF-01 и RES-INT-01 выполнены в рамках поручения реализации; остальные задачи реализации открыты. Основания — [plan.md](plan.md), [одобренная спецификация](spec.md), [общие контракты/V0–V6](../../architecture/implementation-contracts.md).
 
 Зависимости — глобальные IDs: [Checking](../001-checking/tasks.md), [Appeals](../003-appeals/tasks.md). Веха MVP-REVIEW пройдена; повторное одобрение планов не требуется. T02–T04 и отдельный pending status/пустая сумма=0 приняты вместе с планами; конкретные значения Q09 позже явно согласованы пользователем при поручении реализации: 10/20 целых баллов, строки JSON ([профиль](../../architecture/runtime-baseline.md)). Эксплуатационные параметры остаются открытыми. CI не фиксирует произвольные значения как бизнес-правило. Shell/Compose/auth fixtures — единственные общие из Checking.
 
@@ -27,7 +27,7 @@
 
 | ID | Сценарий | Зависимости | Работа и проверяемый результат |
 | --- | --- | --- | --- |
-| RES-INT-01 | V0 | RES-INF-01, CHK-INT-01 | Опубликовать Results OpenAPI, consumer schema CheckCompleted и producer schemas Applied/Rejected. Проверка: единый internal basis endpoint, distinction исходной/итоговой publicationId, поля kind/origin/selected/actual/escalation; no-op receipt обязателен |
+| RES-INT-01 | V0 | RES-INF-01, CHK-INT-01 | **Выполнена 23 октября 2026 года**, см. [журнал](../../implementation/progress.md). Опубликованы Results OpenAPI, consumer schema CheckCompleted и producer schemas Applied/Rejected с fixtures и проверками. В контракте один internal basis endpoint, исходная/итоговая publicationId различаются, kind/origin/selected/actual/escalation проверяются; Applied receipt обязателен и при no-op |
 | RES-INT-02 | V1/V4 | RES-BE-03, RES-INT-01, CHK-INT-02 | Подключить собственные broker consumer/outbox/inbox/receipts, defer отсутствующих зависимостей и карантин. Проверка: durable маршрут своей копии CheckCompleted, ack только после commit; Initial conflicts наблюдаемы без внешнего consumer; метрики/trace IDs |
 | RES-INT-03 | V3/V5 | RES-INT-02, RES-BE-06, APL-INT-01, CHK-INT-01 | Provider/consumer tests с Checking/Appeals для сообщений и HTTP основания, negative fixtures и схемы версии. Проверка: Applied достаточен для закрытия до Checking facts; Changed=false не меняет publication source; raw receipt не выходит в public DTO |
 
