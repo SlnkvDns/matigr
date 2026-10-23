@@ -7,7 +7,7 @@
 | Компонент | Точная версия | Проверка совместимости / источник |
 | --- | --- | --- |
 | .NET SDK | 10.0.402 | [Официальная загрузка .NET 10](https://dotnet.microsoft.com/en-us/download/dotnet/10.0), `global.json`, rollForward=disable |
-| ASP.NET Core / EF Core / dotnet-ef | 10.0.13 | [EF 10 требует .NET 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/), центральные PackageVersion |
+| ASP.NET Core / EF Core / EF Relational / dotnet-ef | 10.0.13 | [EF 10 требует .NET 10](https://learn.microsoft.com/en-us/ef/core/what-is-new/), центральные PackageVersion; provider-зависимость Relational закреплена явно на 10.0.13 |
 | JwtBearer / JsonWebTokens | 10.0.13 / 8.19.2 | CHK-BE-04: nuspec JwtBearer требует IdentityModel 8.19.2; прямые версии и lock-файлы, RS256/public-key verification по [контракту](../../contracts/authentication.md) |
 | Npgsql EF provider / Npgsql | 10.0.3 | [Provider 10](https://www.npgsql.org/efcore/release-notes/10.0.html); nuspec 10.0.3 требует EF [10.0.4,11.0.0), Npgsql 10.0.3 |
 | PostgreSQL | 18.6, образ `postgres:18.6-bookworm` | [Release notes](https://www.postgresql.org/docs/release/18.6/); точные баллы — numeric, версии — bigint |

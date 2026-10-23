@@ -11,6 +11,12 @@
     <Project Path="services/Results/Results.Domain/Results.Domain.csproj" />
     <Project Path="services/Results/Results.Infrastructure/Results.Infrastructure.csproj" />
   </Folder>
+  <Folder Name="/Appeals/">
+    <Project Path="services/Appeals/Appeals.Api/Appeals.Api.csproj" />
+    <Project Path="services/Appeals/Appeals.Application/Appeals.Application.csproj" />
+    <Project Path="services/Appeals/Appeals.Domain/Appeals.Domain.csproj" />
+    <Project Path="services/Appeals/Appeals.Infrastructure/Appeals.Infrastructure.csproj" />
+  </Folder>
   <Folder Name="/Tests/Checking/">
     <Project Path="../../tests/backend/Checking/Checking.Tests/Checking.Tests.csproj" />
     <Project Path="../../tests/backend/Checking/Checking.Api.Tests/Checking.Api.Tests.csproj" />
@@ -18,5 +24,9 @@
   <Folder Name="/Tests/Results/">
     <Project Path="../../tests/backend/Results/Results.Tests/Results.Tests.csproj" />
     <Project Path="../../tests/backend/Results/Results.Api.Tests/Results.Api.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Tests/Appeals/">
+    <Project Path="../../tests/backend/Appeals/Appeals.Tests/Appeals.Tests.csproj" />
+    <Project Path="../../tests/backend/Appeals/Appeals.Api.Tests/Appeals.Api.Tests.csproj" />
   </Folder>
 </Solution>
