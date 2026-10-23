@@ -35,7 +35,7 @@
 
 | ID | Сценарий | Зависимости | Работа и проверяемый результат |
 | --- | --- | --- | --- |
-| RES-FE-01 | V1 | CHK-FE-01, RES-BE-04 | Добавить results feature: анонимная таблица всех команд/задач, score/status/total/dense rank по DTO. Проверка component tests: равные места, pending не равен Incorrect, браузер не определяет итоговые баллы/места |
+| RES-FE-01 | V1 | CHK-FE-01, RES-BE-04 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Добавить results feature: анонимная таблица всех команд/задач, score/status/total/dense rank по DTO. Проверка component tests: равные места, pending не равен Incorrect, браузер не определяет итоговые баллы/места |
 | RES-FE-02 | V1/V6 | RES-FE-01, RES-BE-05 | Подключить SSE, version reconciliation, GET/reconnect и видимость деградации. Проверка frontend tests: событие во время GET/старый ответ не откатывает снимок; новый anonymous browser видит обновление |
 | RES-FE-03 | V3 | RES-FE-01, CHK-FE-02, RES-BE-04 | Добавить личные результаты и передачу resultId/expectedResultVersion в appeals route, без локальной выдачи права. Проверка: смена subject очищает private кэш; отображается ожидание результата, недоступные поля не попадают в публичную таблицу |
 

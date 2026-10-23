@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   const checkingTarget = env.CHECKING_API_TARGET ?? 'http://127.0.0.1:5101';
+  const resultsTarget = env.RESULTS_API_TARGET ?? 'http://127.0.0.1:5102';
   return {
     plugins: [react()],
     server: {
@@ -15,6 +16,7 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api/v1/checking': { target: checkingTarget },
+        '/api/v1/results': { target: resultsTarget },
         '/dev/v1/session': { target: checkingTarget },
       },
     },

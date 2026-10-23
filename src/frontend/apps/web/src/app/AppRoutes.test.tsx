@@ -16,7 +16,7 @@ describe('single application navigation', () => {
     renderApp();
     expect(screen.getByRole('heading', { level: 1, name: 'Турнирная таблица' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Таблица' })).toHaveAttribute('aria-current', 'page');
-    expect(screen.getByText(/Таблица будет доступна всем, без входа/)).toBeInTheDocument();
+    expect(screen.getByText(/Таблица доступна всем, без входа/)).toBeInTheDocument();
     expect(fetch).not.toHaveBeenCalled();
   });
 
@@ -39,10 +39,12 @@ describe('single application navigation', () => {
   ])('supports direct navigation to %s without fake results, controls or assignments', (path, heading) => {
     renderApp(path);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
-    expect(screen.getByText(path === '/checking' ? 'Для проверки войдите как член жюри.' : 'Раздел готовится')).toBeInTheDocument();
+    expect(screen.getByText(path === '/checking' ? 'Для проверки войдите как член жюри.' : path === '/results' ? 'Таблица доступна всем, без входа.' : 'Раздел готовится')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button')).not.toBeInTheDocument();
-    expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    if (path !== '/results') {
+      expect(screen.queryByRole('button')).not.toBeInTheDocument();
+      expect(screen.queryByRole('textbox')).not.toBeInTheDocument();
+    }
     expect(screen.getByRole('link', { name: 'К содержимому' })).toHaveAttribute('href', '#main');
   });
 

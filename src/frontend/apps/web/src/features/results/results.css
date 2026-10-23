@@ -1,0 +1,9 @@
+.results-controls { display: flex; flex-wrap: wrap; align-items: end; gap: .75rem; margin-block: 1rem; }
+.results-controls label { display: grid; gap: .4rem; min-width: 0; max-width: 100%; }
+.results-controls input { max-width: 100%; box-sizing: border-box; padding: .55rem; }
+.results-controls button { padding: .6rem 1rem; }
+.standings-scroll { max-width: 100%; overflow-x: auto; margin-top: 1rem; border: 1px solid #ded8cd; border-radius: 12px; }
+.standings { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+.standings caption { text-align: left; padding: 1rem; font-weight: 600; }
+.standings td, .standings th { padding: .8rem 1rem; border-top: 1px solid #ded8cd; text-align: left; }
+.standings thead { background: #f2f0e9; }
