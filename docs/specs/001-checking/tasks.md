@@ -21,7 +21,7 @@
 
 | ID | Сценарий | Зависимости | Работа и проверяемый результат |
 | --- | --- | --- | --- |
-| CHK-BE-01 | V1/V2 | CHK-INF-02 | Реализовать SolutionReference, Check, Assignment и чистые переходы Initial/Appeal/Senior. Проверка: Completed и материал неизменяемы, исход бинарный, без комментария; scope и единая занятость явно представлены |
+| CHK-BE-01 | V1/V2 | CHK-INF-02 | **Выполнена 23 октября 2026 года**, см. [журнал](../../implementation/progress.md). Реализованы SolutionReference, Check, Assignment/ReviewerScope и чистые переходы Initial/Appeal/Senior. Проверка: Completed и материал неизменяемы, исход бинарный, без комментария; область и единственное активное назначение явно представлены |
 | CHK-BE-02 | V1 | CHK-BE-01, CHK-INF-03 | Создать миграции собственных таблиц/partial UNIQUE/CAS/inbox/outbox/idempotency. Проверка: миграции с чистой БД, constraints реально запрещают два Active на жюри/Check; capability восстанавливается после restart с сохранённым ключом |
 | CHK-BE-03 | V1 | CHK-BE-02, CHK-INF-04 | Добавить идемпотентный внутренний bootstrap принятых ссылок/Initial Check и read-only adapter материала. Проверка: повтор не создаёт новую работу, конфликт материала наблюдаем; произвольный path/URL недоступен, отсутствие файла не создаёт Incorrect |
 | CHK-BE-04 | V0/V1 | CHK-INF-04, CHK-INT-01 | **Выполнена 23 октября 2026 года**, [verification contract](../../../contracts/authentication.md), [журнал](../../implementation/progress.md). Изолированный dev-issuer/profile, JWT и серверные role/scope policies. Проверка: подмена browser role/team запрещена, ключ/subjectId устойчивы, выдача только Local/Test; объектные права реальных бизнес-handlers остаются CHK-BE-05/06 |
