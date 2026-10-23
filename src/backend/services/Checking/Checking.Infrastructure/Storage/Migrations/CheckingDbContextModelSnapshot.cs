@@ -280,6 +280,33 @@ namespace Checking.Infrastructure.Storage.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Matigr.Checking.Infrastructure.Storage.FixtureSetRow", b =>
+                {
+                    b.Property<string>("Name")
+                        .HasColumnType("text")
+                        .HasColumnName("name");
+
+                    b.Property<DateTimeOffset>("ImportedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("imported_at");
+
+                    b.Property<string>("ManifestHash")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("manifest_hash");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint")
+                        .HasColumnName("version");
+
+                    b.HasKey("Name");
+
+                    b.ToTable("fixture_sets", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_fixture_set", "version > 0 AND manifest_hash ~ '^[a-f0-9]{64}$'");
+                        });
+                });
+
             modelBuilder.Entity("Matigr.Checking.Infrastructure.Storage.HttpIdempotencyRow", b =>
                 {
                     b.Property<Guid>("SubjectId")

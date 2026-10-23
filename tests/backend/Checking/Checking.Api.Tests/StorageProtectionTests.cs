@@ -59,9 +59,9 @@ public class StorageProtectionTests(IdentityTestFiles files) : IClassFixture<Ide
     {
         using var db = new CheckingDbContext(new DbContextOptionsBuilder<CheckingDbContext>()
             .UseNpgsql("Host=localhost;Database=unused;Username=unused;Password=unused").Options);
-        Assert.Single(db.Database.GetMigrations());
+        Assert.Equal(2, db.Database.GetMigrations().Count());
         Assert.False(db.Database.HasPendingModelChanges());
-        Assert.Equal(10, db.Model.GetEntityTypes().Count());
+        Assert.Equal(11, db.Model.GetEntityTypes().Count());
         var assignment = db.Model.FindEntityType(typeof(AssignmentRow))!;
         Assert.Equal(2, assignment.GetIndexes().Count(index => index.IsUnique && index.GetFilter() == "state = 'Active'"));
         Assert.True(db.Model.FindEntityType(typeof(CheckRow))!.FindProperty(nameof(CheckRow.Version))!.IsConcurrencyToken);

@@ -63,6 +63,8 @@ CHK-BE-02: [схема хранения, миграция и границы за
 
 ## 4. REST API
 
+CHK-BE-03: внутренний bootstrap принятых ссылок/Initial Check и read-only fixture material adapter реализованы. Local startup закрепляет неизменный набор в `fixture_sets`, повтор не создаёт новую работу и не сбрасывает назначение/вердикт. Материал выдаётся только по полному allowlisted snapshot после проверки SHA-256, без записи/загрузки. HTTP route и актуальное право владельца остаются CHK-BE-05/06.
+
 Все маршруты с `/api/v1/checking`, кроме dev-issuer. Форма HTTP DTO опубликована отдельно от доменных классов в [Checking OpenAPI](../../../contracts/http/checking/openapi.json), условные поля сообщений — в [JSON Schema](../../../contracts/README.md) (CHK-INT-01). Исполняемые бизнес-обработчики и .NET DTO/serialization adapters относятся к последующим backend/integration-задачам.
 
 | Метод и путь | Права и вход | Результат |

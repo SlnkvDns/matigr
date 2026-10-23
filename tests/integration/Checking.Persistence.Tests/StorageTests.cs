@@ -23,12 +23,12 @@ public sealed class DatabaseFixture : IAsyncLifetime
         await using var db = Open();
         if (Environment.GetEnvironmentVariable("StorageTest__RestartRead") == "true")
         {
-            Assert.Single(await db.Database.GetAppliedMigrationsAsync());
+            Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
             return;
         }
         await db.Database.EnsureDeletedAsync();
         await db.Database.MigrateAsync();
-        Assert.Single(await db.Database.GetAppliedMigrationsAsync());
+        Assert.Equal(2, (await db.Database.GetAppliedMigrationsAsync()).Count());
         Assert.False(db.Database.HasPendingModelChanges());
         await db.GetService<IMigrator>().MigrateAsync("0");
         Assert.Empty(await db.Database.GetAppliedMigrationsAsync());
@@ -39,7 +39,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
 }
 
 // One fixture, no parallel migration reset; races below use separate connections explicitly.
-public class StorageTests(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
+public partial class StorageTests(DatabaseFixture fixture) : IClassFixture<DatabaseFixture>
 {
     private static readonly DateTimeOffset Now = DateTimeOffset.UtcNow;
 

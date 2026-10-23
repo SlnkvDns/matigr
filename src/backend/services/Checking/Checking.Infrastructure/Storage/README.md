@@ -1,8 +1,8 @@
-# Хранение Checking — CHK-BE-02
+# Хранение Checking — CHK-BE-02/03
 
-Собственная PostgreSQL и EF Core: `CheckingDbContext`, локальные persistence records и миграция `20261023171035_InitialCheckingStorage`. Domain не зависит от EF. Records не являются контрактами API/брокера. Перевод состояния в команды/DTO, bootstrap fixtures и runtime workers выполняются следующими задачами.
+Собственная PostgreSQL и EF Core: `CheckingDbContext`, локальные persistence records и миграции `20261023171035_InitialCheckingStorage` / `20261023173153_PreparedFixtureSet`. Domain не зависит от EF. Records не являются контрактами API/брокера. Runtime commands/DTO и workers выполняются следующими задачами; внутренний bootstrap принятых снимков реализован в CHK-BE-03.
 
-Схема содержит `solution_references`, `checks`, `assignments`, `reviewer_scopes`, `check_history`, `recheck_request_receipts`, `http_idempotency`, `inbox`, `outbox`, `processing_failures`. Частичные UNIQUE гарантируют один Active на reviewer во всём Checking и один Active на Check; Initial уникален на solution, Appeal — на appealId, reviewRevision — внутри solution. Внешние team/task/result/appeal IDs не имеют межсервисных FK.
+Схема содержит `fixture_sets`, `solution_references`, `checks`, `assignments`, `reviewer_scopes`, `check_history`, `recheck_request_receipts`, `http_idempotency`, `inbox`, `outbox`, `processing_failures`. Частичные UNIQUE гарантируют один Active на reviewer во всём Checking и один Active на Check; Initial уникален на solution, Appeal — на appealId, reviewRevision — внутри solution. Внешние team/task/result/appeal IDs не имеют межсервисных FK.
 
 `checks.version` — EF concurrency token. При изменении отслеживаемой строки `SaveChanges` увеличивает исходную версию на один; stale update вызывает `DbUpdateConcurrencyException`. Принятый snapshot, основание Check и завершённый Check не изменяются через этот путь записи. Будущий явный SQL обязан сохранять те же условия/CAS. Транзакционная логика реальных TakeNext/Complete/Refuse ещё не подключена. Частичные UNIQUE и CHECK не заменяют проверку полномочий и допустимости перехода в Domain/Application.
 
@@ -12,7 +12,11 @@
 
 Inbox хранит только завершённую обработку по `(consumer,messageId)`; отложенные/невалидные сообщения имеют отдельную диагностику. Outbox сохраняет стабильный messageId/envelope, попытки/следующую попытку/техническую блокировку и статус отправки. Состояния транспорта и поля retry не вводят бизнес-сроков. HTTP/recheck receipts сохраняют исходный hash/ответ; сравнение повтора и запись результата одной транзакцией будут реализованы в handlers. Автоматической очистки receipts нет.
 
-В Local миграция применяется до открытия HTTP; `Storage:ApplyMigrations=false` отключает этот адаптер для отдельных test hosts. В остальных средах schema применяется явно при deployment. Настоящий bootstrap ссылок/материалов в этой задаче отсутствует.
+В Local миграция и bootstrap применяются до открытия HTTP; `Storage:ApplyMigrations=false` отключает этот startup adapter для отдельных test hosts. В остальных средах schema применяется явно при deployment. Fixture/material adapter регистрируется только в Local/Test.
+
+CHK-BE-03 добавляет `fixture_sets`: постоянные version/checksum локального набора. `PreparedFixtureBootstrapper` блокирует эту запись и одной транзакцией сохраняет scopes, принятые ссылки и Initial Check/историю. Изменённый набор не импортируется поверх прежнего даже с обновлённым checksum-файлом. Порт `IAcceptedReferenceBootstrap` не является HTTP/API приёма: на неизменяемом SolutionReference `INSERT ON CONFLICT` и блокировка строки сериализуют повтор/конфликт; создание ссылки, Initial Check и истории атомарно. Повтор возвращает прежний Check, включая уже завершённый. Времена входного снимка канонизируются до микросекунд PostgreSQL. Без истории загрузки, QR, producer/consumer SolutionAccepted или проверки текущей активности турнира.
+
+`PreparedMaterialStore` реализует `IReadOnlyMaterialStore` по полному снимку и allowlist проверенного manifest. Разрешённый fixture file проверяется на reparse/symlink и SHA-256 при каждом чтении; возвращается read-only MemoryStream проверенных байтов. Внешние path/URL не интерпретируются. Ошибки материала не пишут в БД и не создают вердикт; публичный маршрут/проверка актуального владельца будут подключены CHK-BE-05/06.
 
 Проверки из корня репозитория:
 
@@ -23,4 +27,4 @@ node scripts/check-checking-storage.mjs
 
 Вторая команда требует Docker и подготовленный ключ (`node scripts/prepare-fixtures.mjs`). Она создаёт отдельный проект `matigr-checking-storage-tests` без host ports и без постоянного volume: PostgreSQL 18.6 в tmpfs, собственные тестовые credentials/сеть. Tests отказываются сбрасывать БД с именем, отличным от `checking_storage_test`. Проверяются up/down/up миграции, UNIQUE/CHECK/FK, реальное ожидание конкурирующей транзакции/commit/rollback, CAS, атомарный rollback связанных записей, освобождение после отказа и persistence шифрованных ответов. Затем отдельный контейнер/процесс читает прежний checkpoint с прежним ключом. `finally` удаляет только этот тестовый Compose. Существующие `matigr` volumes не используются. CI запускает ту же команду.
 
-Это проверки границы хранения CHK-BE-02. CHK-IT-01 и HTTP/broker/E2E задачи остаются открытыми до выполнения их зависимостей и полного набора сценариев.
+Это проверки хранения и подготовленных данных CHK-BE-02/03. CHK-IT-01 и HTTP/broker/E2E задачи остаются открытыми до выполнения их зависимостей и полного набора сценариев.

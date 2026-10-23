@@ -2,6 +2,14 @@ using Matigr.Checking.Domain;
 
 namespace Matigr.Checking.Infrastructure.Storage;
 
+internal sealed class FixtureSetRow
+{
+    public string Name { get; set; } = "";
+    public long Version { get; set; }
+    public string ManifestHash { get; set; } = "";
+    public DateTimeOffset ImportedAt { get; set; }
+}
+
 // Persistence records stay local to Checking. They are neither HTTP DTOs nor shared aggregates.
 internal sealed class SolutionReferenceRow
 {

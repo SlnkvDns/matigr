@@ -38,6 +38,7 @@ public sealed class CheckingDbContext(DbContextOptions<CheckingDbContext> option
     }
 
     internal DbSet<SolutionReferenceRow> SolutionReferences => Set<SolutionReferenceRow>();
+    internal DbSet<FixtureSetRow> FixtureSets => Set<FixtureSetRow>();
     internal DbSet<CheckRow> Checks => Set<CheckRow>();
     internal DbSet<AssignmentRow> Assignments => Set<AssignmentRow>();
     internal DbSet<ReviewerScopeRow> ReviewerScopes => Set<ReviewerScopeRow>();
@@ -50,6 +51,11 @@ public sealed class CheckingDbContext(DbContextOptions<CheckingDbContext> option
 
     protected override void OnModelCreating(ModelBuilder model)
     {
+        model.Entity<FixtureSetRow>(e =>
+        {
+            e.ToTable("fixture_sets", t => t.HasCheckConstraint("ck_fixture_set", "version > 0 AND manifest_hash ~ '^[a-f0-9]{64}$'"));
+            e.HasKey(x => x.Name);
+        });
         model.Entity<SolutionReferenceRow>(e =>
         {
             e.ToTable("solution_references", t => t.HasCheckConstraint("ck_solution_source_version", "source_version > 0"));

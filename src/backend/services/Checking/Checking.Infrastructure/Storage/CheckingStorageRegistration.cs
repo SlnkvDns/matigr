@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Matigr.Checking.Application;
 
 namespace Matigr.Checking.Infrastructure.Storage;
 
@@ -8,6 +9,8 @@ public static class CheckingStorageRegistration
 {
     public static IServiceCollection AddCheckingStorage(this IServiceCollection services, IConfiguration configuration)
     {
+        services.AddSingleton(TimeProvider.System);
+        services.AddScoped<IAcceptedReferenceBootstrap, AcceptedReferenceBootstrap>();
         services.AddDbContext<CheckingDbContext>(options => options.UseNpgsql(
             configuration.GetConnectionString("Checking")
             ?? throw new InvalidOperationException("Checking connection string is required.")));

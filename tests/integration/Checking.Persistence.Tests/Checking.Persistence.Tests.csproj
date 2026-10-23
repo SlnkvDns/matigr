@@ -4,6 +4,7 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../fixtures/PreparedFixtureFiles.cs" Link="PreparedFixtureFiles.cs" />
     <ProjectReference Include="../../../src/backend/services/Checking/Checking.Infrastructure/Checking.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />

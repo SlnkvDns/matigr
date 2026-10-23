@@ -4,11 +4,14 @@ using Matigr.Checking.Api.Identity;
 using RabbitMQ.Client;
 using Matigr.Checking.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
+using Matigr.Checking.Infrastructure.Fixtures;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApiProblemDetails();
 builder.Services.AddCheckingIdentity(builder.Configuration, builder.Environment);
 builder.Services.AddCheckingStorage(builder.Configuration);
+if (builder.Environment.IsEnvironment("Local") || builder.Environment.IsEnvironment("Test"))
+    builder.Services.AddPreparedCheckingFixtures(builder.Configuration);
 builder.Services.AddSingleton<ICheckingReadiness>(_ => new CheckingReadiness(
     builder.Configuration.GetConnectionString("Checking")
         ?? throw new InvalidOperationException("Checking connection string is required."),
@@ -29,6 +32,7 @@ if (app.Environment.IsEnvironment("Local") && builder.Configuration.GetValue("St
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<CheckingDbContext>().Database.MigrateAsync();
+    await scope.ServiceProvider.BootstrapPreparedCheckingFixturesAsync(CancellationToken.None);
 }
 app.UseExceptionHandler();
 app.UsePrivateIdentityResponses();
