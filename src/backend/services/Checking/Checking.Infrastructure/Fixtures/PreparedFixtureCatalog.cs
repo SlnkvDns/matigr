@@ -65,7 +65,10 @@ internal sealed class PreparedFixtureCatalog
             }
         }
         if (scopes.Distinct().Count() != scopes.Count) throw new InvalidOperationException("Duplicate fixture reviewer scope.");
-        ReviewerScopes = scopes.AsReadOnly();
+        // Existing user policy treats Senior as a reviewer for the general queue as well.
+        // Persist that same inherited permission; assignment evidence still records its route.
+        ReviewerScopes = Array.AsReadOnly(scopes.Concat(scopes.Where(x => x.Role == ReviewerRole.Senior)
+            .Select(x => new ReviewerScope(x.ReviewerId, x.TournamentId, ReviewerRole.Reviewer))).Distinct().ToArray());
     }
 
     private static Guid Id(JsonElement item, string name)

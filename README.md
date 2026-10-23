@@ -33,7 +33,9 @@ dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
 
 ## Контракты
 
-[OpenAPI Checking](contracts/http/checking/openapi.json) и [JSON Schema сообщений](contracts/README.md) описывают согласованный интерфейс отдельно от доменных моделей. Проверка: `npm run test:contracts` после `npm ci`. Она включена в общую команду PowerShell и CI. В CHK-BE-04 реализованы [dev-выбор/profile, JWT и серверные права](contracts/authentication.md); бизнес-обработчики остаются CHK-BE-05/06. Проверки реальных отправителей/потребителей и брокера — отдельные задачи CHK-INT-02–04.
+[OpenAPI Checking](contracts/http/checking/openapi.json) и [JSON Schema сообщений](contracts/README.md) описывают согласованный интерфейс отдельно от доменных моделей. Проверка: `npm run test:contracts` после `npm ci`. Она включена в общую команду PowerShell и CI. В CHK-BE-04 реализованы [dev-выбор/profile, JWT и серверные права](contracts/authentication.md); CHK-BE-05 добавляет очереди, TakeNext, текущее назначение, Check и материал актуального владельца. Complete/Refuse — следующий CHK-BE-06. Проверки реальных отправителей/потребителей и брокера — отдельные задачи CHK-INT-02–04.
+
+`node scripts/check-checking-work.mjs --restart` проверяет реальный HTTP по OpenAPI и сохранность назначения после рестарта Checking. Перед запуском явно задайте `COMPOSE_PROJECT_NAME` отдельного свежего Compose-проекта с подготовленными fixtures: скрипт создаёт назначения и не сбрасывает данные. Пример проверенного проекта — `matigr-chk-be05-smoke`; поднять его можно через `docker compose -p matigr-chk-be05-smoke -f infra/compose/compose.yaml up -d --build`. Проверка требует свободных локальных портов Compose. CI запускает её после инфраструктурной и identity-проверок на своём свежем стеке.
 
 ## Frontend
 

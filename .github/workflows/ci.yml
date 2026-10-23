@@ -42,5 +42,8 @@ jobs:
       - run: node scripts/check-infrastructure.mjs
       - run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/check-identity.mjs --restart
+      - run: node scripts/check-checking-work.mjs --restart
+        env:
+          COMPOSE_PROJECT_NAME: matigr
       - if: always()
         run: docker compose -f infra/compose/compose.yaml down

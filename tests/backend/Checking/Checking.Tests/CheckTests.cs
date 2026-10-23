@@ -5,6 +5,22 @@ namespace Matigr.Checking.Tests;
 public sealed class CheckTests
 {
     [Fact]
+    public void Restored_senior_queue_assigns_same_appeal_at_next_version_and_keeps_origin_lineage()
+    {
+        var (solution, reviewer, senior) = Fixture();
+        var basis = new AppealBasis(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1, Guid.NewGuid(),
+            Guid.NewGuid(), reviewer.ReviewerId, CheckOutcome.Incorrect);
+        var escalation = Guid.NewGuid();
+        var check = Check.RestoreQueued(Guid.NewGuid(), solution, CheckKind.Appeal, 2, 3, escalation, basis);
+        var assigned = check.Assign(Guid.NewGuid(), senior, At(3));
+        Assert.Equal(4, check.Version); Assert.Equal(CheckState.SeniorAssigned, check.State);
+        check.Complete(assigned.AssignmentId, senior.ReviewerId, CheckOutcome.Correct, At(4));
+        Assert.Equal(basis, check.Appeal); Assert.Equal(escalation, check.EscalationId);
+        Assert.Equal(DecisionOrigin.SeniorEscalation, check.Origin);
+        Assert.Throws<ArgumentException>(() => Check.RestoreQueued(Guid.NewGuid(), solution, CheckKind.Initial, 1, 1, null, basis));
+        Assert.Throws<ArgumentException>(() => Check.RestoreQueued(Guid.NewGuid(), solution, CheckKind.Appeal, 2, 1, null, basis));
+    }
+    [Fact]
     public void Initial_check_records_binary_outcome_and_closes_its_assignment()
     {
         var (solution, reviewer, _) = Fixture();

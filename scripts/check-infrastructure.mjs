@@ -82,7 +82,7 @@ const bootstrapState = run(['exec', '-T', 'checking-db', 'sh', '-c',
 `${checkingPassword}\nSELECT count(*) FROM "__EFMigrationsHistory" WHERE "MigrationId" = '20261023173153_PreparedFixtureSet';\nSELECT count(*) FROM solution_references;\nSELECT count(*) FROM checks WHERE kind = 'Initial';\nSELECT count(*) FROM reviewer_scopes;\nSELECT count(*) FROM check_history WHERE transition_type = 'InitialCheckCreated';\nSELECT manifest_hash FROM fixture_sets WHERE name = 'checking-local';`);
 assert.equal(bootstrapState.status, 0, bootstrapState.stderr);
 const expectedManifestHash = (await readFile(path.join(root, 'infra/fixtures/manifest.sha256'), 'utf8')).trim();
-assert.equal(bootstrapState.stdout.trim(), `1\n6\n6\n3\n6\n${expectedManifestHash}`, 'Prepared fixture v1 bootstrap must be complete and idempotent');
+assert.equal(bootstrapState.stdout.trim(), `1\n6\n6\n4\n6\n${expectedManifestHash}`, 'Prepared fixture v1 bootstrap must be complete and idempotent');
 const fixtureHash = run(['exec', '-T', 'checking-api', 'sha256sum', '/fixtures/manifest.json']);
 assert.equal(fixtureHash.status, 0);
 assert.equal(fixtureHash.stdout.split(/\s/)[0], (await readFile(path.join(root, 'infra/fixtures/manifest.sha256'), 'utf8')).trim());

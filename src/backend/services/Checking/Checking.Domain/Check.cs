@@ -88,6 +88,19 @@ public sealed class Check
     public static Check CreateInitial(Guid checkId, SolutionReference solution, long reviewRevision = 1) =>
         new(checkId, solution, CheckKind.Initial, reviewRevision, CheckState.Queued, null);
 
+    // Rehydrate only an unassigned persisted queue entry before applying Assign.
+    public static Check RestoreQueued(Guid checkId, SolutionReference solution, CheckKind kind, long reviewRevision,
+        long version, Guid? escalationId, AppealBasis? appeal)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(version);
+        if (!Enum.IsDefined(kind) || (kind == CheckKind.Appeal) != (appeal is not null)
+            || escalationId == Guid.Empty || (kind == CheckKind.Appeal && escalationId is null))
+            throw new ArgumentException("Invalid persisted queue state.");
+        return new Check(checkId, solution, kind, reviewRevision,
+            escalationId is null ? CheckState.Queued : CheckState.SeniorQueued, appeal)
+        { Version = version, EscalationId = escalationId };
+    }
+
     public static Check CreateAppeal(Guid checkId, SolutionReference solution, long reviewRevision,
         AppealBasis appeal, Check baseCheck, Guid assignmentId, ReviewerScope selectedReviewer, DateTimeOffset assignedAt)
     {

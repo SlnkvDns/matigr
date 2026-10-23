@@ -5,6 +5,7 @@ using RabbitMQ.Client;
 using Matigr.Checking.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Matigr.Checking.Infrastructure.Fixtures;
+using Matigr.Checking.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddApiProblemDetails();
@@ -39,7 +40,7 @@ app.UsePrivateIdentityResponses();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapDevIdentity();
-app.MapCheckingApi(); // Business handlers join this protected group in CHK-BE-05/06.
+app.MapCheckingApi().MapCheckingWork(); // Complete/Refuse join in CHK-BE-06.
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapGet("/health/ready", async (ICheckingReadiness readiness, CancellationToken cancellationToken) =>
 {
