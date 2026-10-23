@@ -18,6 +18,7 @@ if (app.Environment.IsEnvironment("Local") && app.Configuration.GetValue<bool?>(
 }
 if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;
 app.MapResultReads();
+app.MapStandingsEvents();
 app.MapGet("/health/live", () => HttpResults.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapGet("/health/ready", async (IResultsReadiness readiness, CancellationToken cancellationToken) =>
 {
