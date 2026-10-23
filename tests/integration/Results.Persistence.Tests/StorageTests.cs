@@ -11,6 +11,7 @@ public sealed class DatabaseFixture : IAsyncLifetime
     public string Connection => Environment.GetEnvironmentVariable("ConnectionStrings__ResultsStorageTest")
         ?? throw new InvalidOperationException("Use isolated results-storage-tests Compose.");
     public ResultsDbContext Open() => new(new DbContextOptionsBuilder<ResultsDbContext>().UseNpgsql(Connection).Options);
+    public Guid Tournament => Guid.Parse("0344e06b-4ea1-582e-bd91-e832719773f2");
     public string Fixtures => "/repo/infra/fixtures";
     public async Task InitializeAsync()
     {
@@ -30,8 +31,8 @@ public partial class StorageTests(DatabaseFixture fixture) : IClassFixture<Datab
     public async Task Seed_repeat_is_safe_rules_are_exact_and_runtime_mutation_is_rejected()
     {
         await using var db = fixture.Open(); await ResultFixtures.SeedAsync(db, fixture.Fixtures);
-        Assert.Equal(3, await db.Teams.CountAsync()); Assert.Equal(2, await db.Tasks.CountAsync());
-        Assert.Equal(new decimal[] { 10, 20 }, await db.Rules.OrderBy(x => x.Points).Select(x => x.Points).ToArrayAsync());
+        Assert.Equal(3, await db.Teams.CountAsync(x => x.TournamentId == fixture.Tournament)); Assert.Equal(2, await db.Tasks.CountAsync(x => x.TournamentId == fixture.Tournament));
+        Assert.Equal(new decimal[] { 10, 20 }, await db.Rules.Where(x => x.TournamentId == fixture.Tournament).OrderBy(x => x.Points).Select(x => x.Points).ToArrayAsync());
         var rule = await db.Rules.FirstAsync(); rule.Points = 55;
         await Assert.ThrowsAsync<InvalidOperationException>(() => db.SaveChangesAsync());
     }
@@ -54,7 +55,7 @@ public partial class StorageTests(DatabaseFixture fixture) : IClassFixture<Datab
     public async Task Local_tuple_publication_evaluation_and_database_constraints_are_real()
     {
         await using var db = fixture.Open();
-        var team = await db.Teams.FirstAsync(); var task = await db.Tasks.FirstAsync();
+        var team = await db.Teams.FirstAsync(x => x.TournamentId == fixture.Tournament); var task = await db.Tasks.FirstAsync(x => x.TournamentId == fixture.Tournament);
         var id = Guid.NewGuid();
         await using var tx = await db.Database.BeginTransactionAsync();
         db.Results.Add(new() { ResultId = id, TournamentId = team.TournamentId, TeamId = team.TeamId, TaskId = task.TaskId,
