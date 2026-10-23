@@ -1,0 +1,27 @@
+name: matigr-results-storage-tests
+services:
+  database:
+    image: postgres:18.6-bookworm@sha256:bbf83594798e144bff365a9c191c5d779f181fb3135902064ab8ff11918020fc
+    environment:
+      POSTGRES_DB: results_storage_test
+      POSTGRES_USER: results_storage_test
+      POSTGRES_PASSWORD: isolated-test-only
+    tmpfs: [/var/lib/postgresql]
+    networks: [storage-test]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U results_storage_test -d results_storage_test']
+      interval: 2s
+      timeout: 2s
+      retries: 30
+  tests:
+    image: matigr-results-storage-tests:res-be-02
+    build:
+      context: ../..
+      dockerfile: infra/compose/Results.StorageTests.Dockerfile
+    environment:
+      ConnectionStrings__ResultsStorageTest: Host=database;Database=results_storage_test;Username=results_storage_test;Password=isolated-test-only
+    networks: [storage-test]
+    depends_on:
+      database: { condition: service_healthy }
+networks:
+  storage-test: { internal: true }
