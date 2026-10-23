@@ -26,6 +26,8 @@ public sealed class WireSchema
         foreach (var p in schema.EnumerateObject())
         {
             if (!Supported.Contains(p.Name)) throw new InvalidOperationException("Unsupported schema assertion: " + p.Name);
+            if (p.Name == "$ref" && !p.Value.GetString()!.StartsWith("#/", StringComparison.Ordinal)) throw new InvalidOperationException("External schema references are not configured.");
+            if (p.Name == "format" && p.Value.GetString() != "date-time") throw new InvalidOperationException("Unsupported schema format.");
             if (p.Name is "properties" or "$defs") foreach (var child in p.Value.EnumerateObject()) Inspect(child.Value);
             if (p.Name is "allOf" or "anyOf") foreach (var child in p.Value.EnumerateArray()) Inspect(child);
             if (p.Name is "items" or "not" or "if" or "then" or "else" or "propertyNames" or "additionalProperties") Inspect(p.Value);
@@ -62,7 +64,8 @@ public sealed class WireSchema
             if (schema.TryGetProperty("minLength", out var length) && s.EnumerateRunes().Count() < length.GetInt32()) return false;
             if (schema.TryGetProperty("pattern", out var pattern) && !Regex.IsMatch(s, pattern.GetString()!, RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1))) return false;
             if (schema.TryGetProperty("format", out var format) && format.GetString() == "date-time"
-                && !DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out _)) return false;
+                && (!Regex.IsMatch(s, @"\A\d{4}-\d{2}-\d{2}[Tt]\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:[Zz]|[+-]\d{2}:\d{2})\z", RegexOptions.CultureInvariant, TimeSpan.FromSeconds(1))
+                    || !DateTimeOffset.TryParse(s, CultureInfo.InvariantCulture, DateTimeStyles.None, out _))) return false;
         }
         if (value.ValueKind == JsonValueKind.Number && value.TryGetDecimal(out var n))
         {

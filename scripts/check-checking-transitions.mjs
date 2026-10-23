@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import { spawnSync } from 'node:child_process';
+import { eventually, sql } from './transport-test-support.mjs';
 import Ajv2020 from 'ajv/dist/2020.js';
 import addFormats from 'ajv-formats';
 
@@ -44,15 +44,10 @@ assert.equal(final.status, 200); const verdict = await final.json();
 assert.equal(verdict.state, 'Completed'); assert.equal(verdict.decisionOrigin, 'SeniorEscalation');
 assert.equal((await request(senior, '/me/assignment')).status, 204);
 
-// Read only the service-owned outbox. Secret stays on stdin, never in command arguments/output.
-const password = (await readFile(new URL('../.local/secrets/checking_db_password', import.meta.url), 'utf8')).trim();
-const sql = "SELECT json_agg(json_build_object('envelope', envelope, 'status', status)) FROM outbox;";
-const result = spawnSync('docker', ['compose', '-f', 'infra/compose/compose.yaml', 'exec', '-T', 'checking-db', 'sh', '-c',
-  'read -r PGPASSWORD; export PGPASSWORD; exec psql -h 127.0.0.1 -U checking_app -d checking_db -At -v ON_ERROR_STOP=1'],
-  { input: `${password}\n${sql}\n`, encoding: 'utf8' });
-assert.equal(result.status, 0, 'Could not read test outbox');
-const facts = JSON.parse(result.stdout); assert.equal(facts.length, 2);
+// Transport is enabled in Compose now. Confirmed delivery is expected, not permanent Pending.
+const facts = await eventually(async () => JSON.parse(await sql('checking', "SELECT COALESCE(json_agg(json_build_object('envelope', envelope, 'status', status)), '[]'::json) FROM outbox;")),
+  rows => rows.length === 2 && rows.every(x => x.status === 'Sent'), 'confirmed runtime CheckCompleted');
 const ajv = new Ajv2020({ strict: false, allErrors: true }); addFormats(ajv);
 const validate = ajv.compile(JSON.parse(await readFile(new URL('../contracts/events/checking/check-completed.v1.schema.json', import.meta.url))));
-for (const fact of facts) { assert.equal(fact.status, 'Pending'); assert.ok(validate(fact.envelope), 'Invalid runtime CheckCompleted'); }
+for (const fact of facts) { assert.equal(fact.status, 'Sent'); assert.ok(validate(fact.envelope), 'Invalid runtime CheckCompleted'); }
 console.log('Checking transitions: real refuse/replay/stale ETag, immediate release, same Check senior final and durable schema-valid outbox: OK');

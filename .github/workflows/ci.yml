@@ -52,5 +52,11 @@ jobs:
       - run: node scripts/check-checking-transitions.mjs
         env:
           COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-transport.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-live-results.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
       - if: always()
         run: docker compose -f infra/compose/compose.yaml down

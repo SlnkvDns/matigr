@@ -36,6 +36,8 @@ public class RuntimeSchemaTests
         Assert.Throws<InvalidMessageException>(() => schema.Validate(JsonSerializer.SerializeToElement(senior)));
         var privateField = Read("check-completed.initial"); privateField["payload"]!["capability"] = "must-not-cross";
         Assert.Throws<InvalidMessageException>(() => schema.Validate(JsonSerializer.SerializeToElement(privateField)));
+        var invalidDate = Read("check-completed.initial"); invalidDate["occurredAt"] = "2026-10-23Z";
+        Assert.Throws<InvalidMessageException>(() => schema.Validate(JsonSerializer.SerializeToElement(invalidDate)));
         var selected = Read("recheck-assigned.selected"); selected["payload"]!["reviewerId"] = "different";
         var contracts = new TransportSchemas(new Dictionary<string, WireSchema>(), new Dictionary<string, WireSchema> { ["route"] = new(assembly, "recheck-assigned.v1.schema.json") });
         Assert.Throws<InvalidMessageException>(() => contracts.Validate(JsonSerializer.SerializeToElement(selected), "route", true));
