@@ -58,7 +58,7 @@
 | ID | Сценарий | Зависимости | Проверяемый результат |
 | --- | --- | --- | --- |
 | CHK-IT-01 | V1 | CHK-BE-02, CHK-UT-01 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). На настоящей PostgreSQL проверить миграции и unique constraints с параллельными транзакциями/rollback. Не использовать in-memory ORM для доказательства занятости |
-| CHK-IT-02 | V1/V2/V6 | CHK-BE-03, CHK-BE-06, CHK-INT-02, CHK-IT-01 | Гонки HTTP: два жюри/одна работа, один жюри/две очереди, complete/refuse, lost reply/replay с устаревшим ETag, restart host/current assignment, права на material. CH-A01–04/07/11–16/21–25 |
+| CHK-IT-02 | V1/V2/V6 | CHK-BE-03, CHK-BE-06, CHK-INT-02, CHK-IT-01 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Гонки HTTP: два жюри/одна работа, один жюри/две очереди, complete/refuse, lost reply/replay с устаревшим ETag, restart host/current assignment, права на material. CH-A01–04/07/11–16/21–25 |
 | CHK-IT-03 | V3/V5 | CHK-INT-03, CHK-INT-04, CHK-UT-02, CHK-IT-02 | Конкурентная обычная работа и appeal одного жюри, busy→новый ручной request, исходный жюри, senior fallback без второго Check, чужой payload/старый token; fault/retry после создания перепроверки. CH-A09/10/26–34/37 |
 | CHK-IT-04 | V1/V6 | CHK-INT-02, CHK-BE-06 | Fault tests первичного вердикта/outbox с реальным брокером: crash до/после commit/confirm, broker down/restart, повтор доставки, unroutable/poison/schema и redrive технического adapter. CH-A08/17/24/25; эффект и messageId сохраняются. Consumer crash/ack для перепроверки — CHK-IT-03 |
 

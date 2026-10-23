@@ -4,6 +4,9 @@
     <IsPackable>false</IsPackable>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="../../backend/Checking/Checking.Api.Tests/IdentityTestFiles.cs" Link="IdentityTestFiles.cs" />
+    <ProjectReference Include="../../../src/backend/services/Checking/Checking.Api/Checking.Api.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <Compile Include="../../fixtures/PreparedFixtureFiles.cs" Link="PreparedFixtureFiles.cs" />
     <ProjectReference Include="../../../src/backend/services/Checking/Checking.Infrastructure/Checking.Infrastructure.csproj" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

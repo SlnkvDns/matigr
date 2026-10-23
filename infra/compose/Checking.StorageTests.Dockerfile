@@ -6,6 +6,7 @@ COPY contracts/events/ contracts/events/
 COPY src/backend/services/Checking/ src/backend/services/Checking/
 COPY tests/integration/Checking.Persistence.Tests/ tests/integration/Checking.Persistence.Tests/
 COPY tests/fixtures/PreparedFixtureFiles.cs tests/fixtures/PreparedFixtureFiles.cs
+COPY tests/backend/Checking/Checking.Api.Tests/IdentityTestFiles.cs tests/backend/Checking/Checking.Api.Tests/IdentityTestFiles.cs
 COPY infra/fixtures/ infra/fixtures/
 RUN dotnet restore tests/integration/Checking.Persistence.Tests/Checking.Persistence.Tests.csproj --locked-mode
 RUN dotnet build tests/integration/Checking.Persistence.Tests/Checking.Persistence.Tests.csproj --no-restore -c Release
