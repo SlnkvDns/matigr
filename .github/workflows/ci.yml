@@ -34,7 +34,10 @@ jobs:
         with:
           node-version-file: .node-version
       - run: node scripts/init-local.mjs
+      - run: node scripts/prepare-fixtures.mjs
       - run: docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
       - run: node scripts/check-infrastructure.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/check-identity.mjs --restart
       - if: always()
         run: docker compose -f infra/compose/compose.yaml down

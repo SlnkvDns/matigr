@@ -31,7 +31,7 @@ dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
 
 ## Контракты
 
-[OpenAPI Checking](contracts/http/checking/openapi.json) и [JSON Schema сообщений](contracts/README.md) описывают согласованный интерфейс отдельно от доменных моделей. Проверка: `npm run test:contracts` после `npm ci`. Она включена в общую команду PowerShell и CI. Бизнес-маршруты пока описаны контрактом; исполняемые обработчики относятся к CHK-BE-04–06. Проверки реальных отправителей/потребителей и брокера — отдельные задачи CHK-INT-02–04.
+[OpenAPI Checking](contracts/http/checking/openapi.json) и [JSON Schema сообщений](contracts/README.md) описывают согласованный интерфейс отдельно от доменных моделей. Проверка: `npm run test:contracts` после `npm ci`. Она включена в общую команду PowerShell и CI. В CHK-BE-04 реализованы [dev-выбор/profile, JWT и серверные права](contracts/authentication.md); бизнес-обработчики остаются CHK-BE-05/06. Проверки реальных отправителей/потребителей и брокера — отдельные задачи CHK-INT-02–04.
 
 ## Frontend
 
@@ -46,8 +46,10 @@ npm run dev:web
 
 ```sh
 node scripts/init-local.mjs
+node scripts/prepare-fixtures.mjs
 docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
 node scripts/check-infrastructure.mjs
+node scripts/check-identity.mjs --restart
 ```
 
 Три PostgreSQL не публикуют порты хоста и используют отдельные сети, volumes и credentials. Локальная проверка проверяет все 6 запретов чужих credentials, durable bindings RabbitMQ и готовность Checking. Отдельных API Results/Appeals пока нет. Checking слушает `http://127.0.0.1:5101`, RabbitMQ management — `http://127.0.0.1:15672`; пароли случайны, находятся в игнорируемом `.local/secrets`. Приложение после чтения Compose secrets запускается как непривилегированный `app`.

@@ -5,7 +5,7 @@ using Microsoft.Extensions.DependencyInjection;
 
 namespace Matigr.Checking.Api.Tests;
 
-public class HealthTests
+public class HealthTests(IdentityTestFiles identity) : IClassFixture<IdentityTestFiles>
 {
     [Theory]
     [InlineData(true, true, HttpStatusCode.OK)]
@@ -14,7 +14,7 @@ public class HealthTests
     public async Task Readiness_reports_each_dependency_without_claiming_business_success(
         bool database, bool broker, HttpStatusCode expected)
     {
-        await using var factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        await using var factory = identity.Factory().WithWebHostBuilder(builder =>
             builder.ConfigureServices(services => services.AddSingleton<ICheckingReadiness>(new Probe(database, broker))));
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);

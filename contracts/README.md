@@ -4,7 +4,7 @@
 
 ## HTTP Checking
 
-[OpenAPI 3.1.1](http/checking/openapi.json) содержит семь защищённых операций Checking, dev-выбор сессии и два реализованных health endpoint. Доступные обработчики пока только `/health/live` и `/health/ready`; `/api/v1/checking/*` и dev-issuer реализуются в CHK-BE-04–06. Документ публикуется в репозитории; HTTP-раздача OpenAPI ещё не добавлена.
+[OpenAPI 3.1.1](http/checking/openapi.json) содержит семь защищённых операций Checking, dev-выбор сессии и два health endpoint. В CHK-BE-04 реализованы dev-выбор/profile и [контракт проверки JWT/серверных прав](authentication.md). `/api/v1/checking/*` остаются CHK-BE-05/06; health реализованы ранее. Документ публикуется в репозитории; HTTP-раздача OpenAPI ещё не добавлена.
 
 - Все бизнес-команды требуют `Idempotency-Key`; complete/refuse дополнительно требуют единственный strong `If-Match`. Повтор успешной команды после проверки аутентификации/принадлежности возвращает исходный ответ до проверки версии/текущего состояния. Разный payload с тем же ключом — `409 IdempotencyConflict`. Конкретный Check входит в идентичность операции; изменяемые precondition-заголовки не создают новую бизнес-команду.
 - Нет If-Match — `428 IfMatchRequired`, устарел — `412 CheckVersionConflict`. Конфликт занятости/состояния — `409`; пустая очередь/отсутствие своего назначения — `204` без тела. TakeNext не требует If-Match: Check выбирает сервер.

@@ -18,6 +18,8 @@ Frontend: feature `checking` в единственном `src/frontend/apps/web`
 
 CHK-FE-01: [единый frontend](../../../src/frontend/apps/web/README.md) создан с маршрутами трёх feature-модулей, сгенерированными HTTP DTO Checking и общим JSON/ProblemDetails transport. Пока это shell с явно неподключёнными разделами. Сессия/права, реальные очереди/вердикты, standings/SSE и апелляции реализуются отдельными задачами ниже; текущий UI их не имитирует.
 
+CHK-BE-04: [dev-выдача/profile и JWT verification contract](../../../contracts/authentication.md) реализованы отдельно от бизнес-модели. Серверные policies проверяют reviewer/senior и турнирный scope; владельца/назначение будут проверять handlers CHK-BE-05/06. Frontend-сессия остаётся CHK-FE-02.
+
 ## 2. Сущности и состояния
 
 | Сущность | Содержимое и инвариант |

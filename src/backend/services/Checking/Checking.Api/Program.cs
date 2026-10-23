@@ -1,9 +1,11 @@
 using Matigr.Checking.Application;
 using Matigr.Checking.Infrastructure;
+using Matigr.Checking.Api.Identity;
 using RabbitMQ.Client;
 
 var builder = WebApplication.CreateBuilder(args);
-builder.Services.AddProblemDetails();
+builder.Services.AddApiProblemDetails();
+builder.Services.AddCheckingIdentity(builder.Configuration, builder.Environment);
 builder.Services.AddSingleton<ICheckingReadiness>(_ => new CheckingReadiness(
     builder.Configuration.GetConnectionString("Checking")
         ?? throw new InvalidOperationException("Checking connection string is required."),
@@ -18,14 +20,23 @@ builder.Services.AddSingleton<ICheckingReadiness>(_ => new CheckingReadiness(
         RequestedConnectionTimeout = TimeSpan.FromSeconds(2)
     }));
 var app = builder.Build();
+_ = app.Services.GetRequiredService<UserTokenVerifier>();
 app.UseExceptionHandler();
-app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" }));
+app.UsePrivateIdentityResponses();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapDevIdentity();
+app.MapCheckingApi(); // Business handlers join this protected group in CHK-BE-05/06.
+app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapGet("/health/ready", async (ICheckingReadiness readiness, CancellationToken cancellationToken) =>
 {
     var state = await readiness.ProbeAsync(cancellationToken);
     return Results.Json(new { status = state.Ready ? "Ready" : "Unavailable", state.Database, state.Broker },
         statusCode: state.Ready ? 200 : 503);
-});
+}).AllowAnonymous();
+// Unmapped routes, including disabled dev routes, remain 404 with no business surface.
+app.MapFallback((HttpContext context) => IdentityHttp.Problem(context, 404, "NotFound", "Resource unavailable"))
+    .AllowAnonymous();
 app.Run();
 
 public partial class Program;

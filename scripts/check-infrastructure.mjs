@@ -15,6 +15,9 @@ const cfgResult = run(['config', '--format', 'json']);
 assert.equal(cfgResult.status, 0, cfgResult.stderr);
 const cfg = JSON.parse(cfgResult.stdout);
 assert.ok(cfg.services['checking-api'].volumes.some(v => v.target === '/fixtures' && v.read_only));
+assert.ok(cfg.services['checking-api'].secrets.some(s => s.source === 'dev_issuer_private'));
+for (const [name, service] of Object.entries(cfg.services))
+  if (name !== 'checking-api') assert.ok(!(service.secrets ?? []).some(s => s.source === 'dev_issuer_private'));
 for (const service of ['checking', 'results', 'appeals']) {
   const db = cfg.services[`${service}-db`];
   assert.deepEqual(Object.keys(db.networks), [`${service}-data`]);
