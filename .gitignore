@@ -1,0 +1,15 @@
+.tools/
+.local/
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/coverage/
+**/TestResults/
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+playwright-report/
+test-results/
