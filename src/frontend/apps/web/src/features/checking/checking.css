@@ -1,0 +1,9 @@
+.checking-work { display: grid; gap: 1.5rem; min-width: 0; }
+.checking-work section { border: 1px solid #ddd8cd; border-radius: 12px; padding: 1.2rem; min-width: 0; }
+.checking-controls, .checking-actions { display: flex; flex-wrap: wrap; gap: .75rem; align-items: center; }
+.checking-work select { max-width: 100%; padding: .4rem; }
+.checking-work label { min-width: 0; max-width: 100%; }
+.checking-work button { padding: .6rem .9rem; cursor: pointer; }
+.checking-work button:disabled { cursor: default; opacity: .55; }
+.checking-work p, .checking-work li { overflow-wrap: anywhere; }
+.checking-work pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; background: #f6f3ec; padding: 1rem; }

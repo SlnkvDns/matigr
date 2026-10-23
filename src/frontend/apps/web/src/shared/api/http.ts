@@ -70,7 +70,7 @@ function isCancelled(error: unknown, signal?: AbortSignal): boolean {
 }
 
 export function createHttpClient(basePath: ApiBasePath, fetchImpl: typeof fetch = globalThis.fetch) {
-  async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, options: PostOptions): Promise<HttpResponse<T>> {
+  async function request<T>(method: 'GET' | 'POST', path: string, body: unknown, options: PostOptions, text = false): Promise<HttpResponse<T>> {
     const url = relativeUrl(basePath, path);
     const headers = new Headers({ Accept: 'application/json, application/problem+json' });
     if (options.accessToken) headers.set('Authorization', `Bearer ${options.accessToken}`);
@@ -107,6 +107,10 @@ export function createHttpClient(basePath: ApiBasePath, fetchImpl: typeof fetch 
     }
     const etag = response.headers.get('ETag');
     if (response.status === 204) return { status: 204, data: undefined, etag };
+    if (text) {
+      if (contentType !== 'text/plain') throw new ApiProtocolError();
+      return { status: response.status, data: await response.text() as T, etag };
+    }
     if (contentType !== 'application/json') throw new ApiProtocolError();
     let data: T;
     try { data = await response.json() as T; }
@@ -118,6 +122,7 @@ export function createHttpClient(basePath: ApiBasePath, fetchImpl: typeof fetch 
   }
 
   return {
+    text(path: string, options: RequestOptions = {}) { return request<string>('GET', path, undefined, options, true); },
     get<T>(path: string, options: RequestOptions = {}) { return request<T>('GET', path, undefined, options); },
     // For stateless technical POSTs such as dev credential issuance.
     post<T>(path: string, body: unknown, options: RequestOptions = {}) { return request<T>('POST', path, body, options); },

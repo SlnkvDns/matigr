@@ -50,6 +50,7 @@ export class PrivateWorkspace {
       }
     };
     return {
+      text: (path: string, options: ReadOptions = {}) => run(auth => http.text(path, auth), options.signal),
       get: <T>(path: string, options: ReadOptions = {}) => run(auth => http.get<T>(path, auth), options.signal),
       command: <T>(path: string, body: unknown, options: CommandOptions) =>
         run(auth => http.command<T>(path, body, { ...options, ...auth }), options.signal),

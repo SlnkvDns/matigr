@@ -23,6 +23,7 @@
 | CHK-BE-06 | Выполнена | Complete/Refuse: owner/capability/strong If-Match, replay до stale ETag, атомарные освобождение/history/outbox. 38 PostgreSQL tests и checkpoint, 74 HTTP/backend adapter tests; гонка Complete/Refuse и rollback при сбое receipt успешны. Брокер publisher остаётся CHK-INT-02 |
 | CHK-UT-01 | Выполнена | 35 доменных tests: матрица 5 состояний и 5 команд, scope/owner/assignment, бинарность, время, immutable материал, origins, исходный жюри и финальность старшего. Все пройдены без пропусков |
 | CHK-IT-01 | Выполнена | Реальная PostgreSQL 18.6: up/down/up, partial UNIQUE с параллельными commit/rollback и pg_stat_activity, CAS, FK и rollback. 38 tests плюс отдельный процесс восстановления; без in-memory ORM |
+| CHK-FE-03 | Выполнена | Очереди/пагинация, глобальное назначение, защищённый текстовый материал, бинарный вердикт/отказ и senior queue в едином app. 76 frontend tests и typecheck успешны; серверные ETag/capability, повтор ключа, отсутствие комментария и свобода после передачи проверены |
 
 Проверка CHK-INF-01–04: `scripts/check.ps1 -Restore` — locked restore, Release build без ошибок/предупреждений, 6 backend + 5 fixture tests; проверки границ проектов, локальных целей ссылок и ацикличности 82 задач. `scripts/check-infrastructure.mjs` — все проверки успешны, включая UID 1654 процесса API. Запуск Compose с чистыми volumes выполнен в CHK-INF-03, последующие проверки — на сохранённых данных/credentials. Контейнеры оставлены запущенными.
 
