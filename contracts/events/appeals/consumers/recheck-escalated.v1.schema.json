@@ -1,0 +1,202 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/events/appeals/consumers/recheck-escalated.v1.schema.json",
+  "title": "RecheckEscalated (Appeals consumer expectation)",
+  "description": "Appeals consumer expectation for the Checking-owned escalation fact.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "messageType": {
+      "const": "matigr.checking.recheck-escalated"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "producer": {
+      "const": "Checking"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "UTC; not an ordering guarantee."
+    },
+    "aggregateType": {
+      "const": "Check"
+    },
+    "aggregateId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "aggregateVersion": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "causationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "recheckRequestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "appealId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "checkId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "selectedReviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "releasedReviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "releasedAssignmentId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "escalationId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "tournamentId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "resultId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "expectedResultVersion": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+        },
+        "escalatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$",
+          "description": "UTC; not an ordering guarantee."
+        }
+      },
+      "required": [
+        "recheckRequestId",
+        "appealId",
+        "checkId",
+        "selectedReviewerId",
+        "releasedReviewerId",
+        "releasedAssignmentId",
+        "escalationId",
+        "tournamentId",
+        "teamId",
+        "taskId",
+        "resultId",
+        "expectedResultVersion",
+        "escalatedAt"
+      ],
+      "additionalProperties": true,
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "capability",
+            "capabilityHash",
+            "capabilityCiphertext",
+            "assignmentToken",
+            "token",
+            "accessToken",
+            "score",
+            "previousScore",
+            "points",
+            "total",
+            "scoreRuleVersion",
+            "comment",
+            "commentary",
+            "material",
+            "materialRef",
+            "materialFile",
+            "materialUrl",
+            "requestId"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "messageId",
+    "messageType",
+    "schemaVersion",
+    "producer",
+    "occurredAt",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "causationId",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "propertyNames": {
+    "not": {
+      "enum": [
+        "capability",
+        "capabilityHash",
+        "capabilityCiphertext",
+        "assignmentToken",
+        "token",
+        "accessToken",
+        "score",
+        "previousScore",
+        "points",
+        "total",
+        "scoreRuleVersion",
+        "comment",
+        "commentary",
+        "material",
+        "materialRef",
+        "materialFile",
+        "materialUrl",
+        "requestId"
+      ]
+    }
+  }
+}

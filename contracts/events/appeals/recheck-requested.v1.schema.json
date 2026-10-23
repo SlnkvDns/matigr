@@ -1,0 +1,217 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/events/appeals/recheck-requested.v1.schema.json",
+  "title": "RecheckRequested",
+  "description": "Appeals producer-owned wire schema; must remain compatible with Checking consumer expectation.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "messageType": {
+      "const": "matigr.appeals.recheck-requested"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "producer": {
+      "const": "Appeals"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "UTC; not an ordering guarantee."
+    },
+    "aggregateType": {
+      "const": "Appeal"
+    },
+    "aggregateId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "aggregateVersion": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "causationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "recheckRequestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "appealId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "requestedReviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "solutionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "materialVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "tournamentId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "resultId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "publicationId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "baseCheckId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "expectedResultVersion": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+        },
+        "baseOutcome": {
+          "type": "string",
+          "enum": [
+            "Correct",
+            "Incorrect"
+          ]
+        },
+        "submittedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$",
+          "description": "UTC; not an ordering guarantee."
+        },
+        "acceptedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$",
+          "description": "UTC; not an ordering guarantee."
+        }
+      },
+      "required": [
+        "recheckRequestId",
+        "appealId",
+        "requestedReviewerId",
+        "solutionId",
+        "materialVersionId",
+        "tournamentId",
+        "teamId",
+        "taskId",
+        "resultId",
+        "publicationId",
+        "baseCheckId",
+        "expectedResultVersion",
+        "baseOutcome",
+        "submittedAt",
+        "acceptedAt"
+      ],
+      "additionalProperties": true,
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "capability",
+            "capabilityHash",
+            "capabilityCiphertext",
+            "assignmentToken",
+            "token",
+            "accessToken",
+            "score",
+            "previousScore",
+            "points",
+            "total",
+            "scoreRuleVersion",
+            "comment",
+            "commentary",
+            "material",
+            "materialRef",
+            "materialFile",
+            "materialUrl",
+            "requestId"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "messageId",
+    "messageType",
+    "schemaVersion",
+    "producer",
+    "occurredAt",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "causationId",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "propertyNames": {
+    "not": {
+      "enum": [
+        "capability",
+        "capabilityHash",
+        "capabilityCiphertext",
+        "assignmentToken",
+        "token",
+        "accessToken",
+        "score",
+        "previousScore",
+        "points",
+        "total",
+        "scoreRuleVersion",
+        "comment",
+        "commentary",
+        "material",
+        "materialRef",
+        "materialFile",
+        "materialUrl",
+        "requestId"
+      ]
+    }
+  }
+}

@@ -1,12 +1,18 @@
-# Межсервисные контракты Matigr — CHK-INT-01 и RES-INT-01
+# Межсервисные контракты Matigr — CHK-INT-01, RES-INT-01 и APL-INT-01
 
-Контракты Checking опубликованы в CHK-INT-01, контракты Results — в RES-INT-01, 23 октября 2026 года по одобренным планам. Канонические JSON-файлы редактируются непосредственно; они не генерируются из Domain/ORM. Наличие контракта не означает реализацию соответствующего endpoint или consumer. Это не закрывает runtime-совместимость CHK-INT-04, RES-INT-02/03 или APL-INT-01/03/04/08.
+Контракты Checking опубликованы в CHK-INT-01, Results — в RES-INT-01, Appeals — в APL-INT-01, 23 октября 2026 года по одобренным планам. Канонические JSON-файлы редактируются непосредственно; они не генерируются из Domain/ORM. Наличие контракта не означает реализацию соответствующего endpoint или consumer. Это не закрывает runtime-совместимость CHK-INT-04, RES-INT-02/03 или APL-INT-02/03/04/05/06/07/08.
 
 ## HTTP Results
 
 [OpenAPI 3.1.1](http/results/openapi.json) задаёт анонимный snapshot standings и SSE invalidation, частный результат команды и единственный internal basis endpoint Results → Appeals. UserBearer и отдельный ServiceBearer имеют разные security schemes; user JWT не подходит для internal route. API-контракт не добавляет ручное начисление, изменение стоимости, загрузку решений или управление турниром. В каркасе Results сейчас реализованы только health endpoints; бизнес-маршруты остаются RES-BE-03/04/05. Публичный OpenAPI не включает private basis, а internal basis запрещает дополнительные поля и содержит только опубликованный источник.
 
 Баллы и версии представлены точными десятичными строками. Pending-ячейка не содержит score; Published-ячейка содержит score. Team-result `appealAvailabilityHint` не разрешает подачу: решение остаётся за Appeals. GET/SSE публичны, личный экран использует server-side team scope, внутренний вызов требует отдельной service identity и точной expectedResultVersion.
+
+## HTTP Appeals
+
+[OpenAPI 3.1.1](http/appeals/openapi.json) публикует подачу, собственный список/деталь, очередь только Registered, ручной claim и локальный dev-end-fact adapter. Все частные маршруты требуют UserBearer и серверной проверки роли/scope/ownership; submit принимает только resultId/version, а claim выводит выбранного reviewer из удостоверения. `202 AcceptedAwaitingRecheck` не утверждает, что Checking подтвердил назначение. Dev end-fact route существует только в Local/Test; турнирного CRUD или планового закрытия нет. Пока в Appeals реализованы только health routes и миграция submission window.
+
+`results-appeal-basis.v1.schema.json` — независимое ожидание Appeals для внутреннего ответа Results; отдельный fixture сверяет его с OpenAPI provider и неизменяемой базой RecheckRequested. Это contract test, не вызов Results и не разрешение на подачу.
 
 ## HTTP Checking
 
@@ -32,7 +38,7 @@
 | RecheckAssigned | [Схема](events/checking/recheck-assigned.v1.schema.json) | Appeals |
 | RecheckEscalated | [Схема](events/checking/recheck-escalated.v1.schema.json) | Appeals |
 | RecheckRequestRejected | [Схема](events/checking/recheck-request-rejected.v1.schema.json) | Appeals |
-| RecheckRequested | [Ожидание Checking](events/checking/consumers/recheck-requested.v1.schema.json), [входной пример](../tests/contracts/fixtures/appeals/recheck-requested.json) | Checking; producer schema владельца Appeals ещё относится к APL-INT-01 |
+| RecheckRequested | [Ожидание Checking](events/checking/consumers/recheck-requested.v1.schema.json), [producer schema Appeals](events/appeals/recheck-requested.v1.schema.json), [wire fixture](../tests/contracts/fixtures/appeals/recheck-requested.json) | Checking |
 
 [Каталог](events/checking/catalog.json) сопоставляет схемы с маршрутами из [Compose topology](../infra/compose/topology.json). Тест проверяет отдельные копии CheckCompleted в очередях Results и Appeals. Это статическая проверка маршрутизации; runtime delivery/ack/outbox пока не реализованы.
 
@@ -43,6 +49,12 @@
 - [ResultEvaluationRejected](events/results/result-evaluation-rejected.v1.schema.json) фиксирует коррелированный постоянный бизнес-конфликт, не баллы. Временная недоступность/отсутствующая зависимость остаётся Deferred/Retry и не становится reject. Причины перечислены описательно; схема не выдумывает незакрытый enum.
 
 [Каталог Results](events/results/catalog.json) и контрактные тесты проверяют маршруты с Compose topology и очередь `appeals.result-receipts.v1`. Это форма и статическая маршрутизация, не runtime consumer, outbox, inbox, ack или транзакционная гарантия; они относятся к RES-INT-02/03.
+
+## Сообщения Appeals
+
+- [RecheckRequested producer schema](events/appeals/recheck-requested.v1.schema.json) принадлежит Appeals и совпадает с consumer expectation Checking. Он появляется только после ручного claim; requestedReviewerId связан с authenticated fixture subject, а `recheckRequestId` — каноническое имя ID попытки в wire.
+- [Каталог Appeals](events/appeals/catalog.json) содержит собственные consumer expectations для CheckCompleted Appeal, RecheckAssigned, RecheckEscalated, RecheckRequestRejected и двух Results receipts. CheckCompleted Initial отклоняется Appeals-consumer schema; очереди одного факта не делятся между сервисами.
+- Fixtures копируют producer-owned примеры Checking/Results и проверяются отдельно у Appeals. Contract tests сравнивают общие IDs, reviewer selection/actual reviewer, escalation, исходную publicationId и итоговую publicationId/no-op. Это статическая совместимость, не runtime consumer или гарантия порядка доставки; обработчики остаются APL-INT-03/05/06, provider-consumer проверки — APL-INT-04/08.
 
 Envelope обязателен целиком: messageId/messageType/schemaVersion/producer/occurredAt/aggregateType/aggregateId/aggregateVersion/correlationId/causationId/payload. Технический повтор сохраняет эти данные. Времена — UTC, версии — точные строки; время не определяет порядок.
 
@@ -56,7 +68,7 @@ Envelope обязателен целиком: messageId/messageType/schemaVersio
 
 Стандартная JSON Schema не сравнивает произвольные поля экземпляра между собой. Поэтому identity envelope/payload, равенство selected/actual при Selected/AppealReview и released/selected проверяются отдельно в [контрактном harness](../tests/contracts/support.mjs). Эти проверки — явные требования будущих producer/consumer adapters. Они ещё не подключены к runtime. Контекстные связи с БД, права transport, inbox/CAS/уникальность и порядок доставки проверяются поздними integration-задачами; форма JSON не доказывает их.
 
-Fixtures — независимые примеры допустимых ветвей, не последовательность реальных событий/не история импорта в БД. Входная RecheckRequested fixture и исходящие примеры используют одни и те же immutable IDs/basis для проверки стыка. Полная совместимость независимого producer Appeals и consumers Results/Appeals проверяется после появления их контрактов; их реализация не объявляется завершённой сейчас.
+Fixtures — независимые примеры допустимых ветвей, не последовательность реальных событий/не история импорта в БД. RecheckRequested producer и consumer examples используют одни и те же immutable IDs/basis. APL-INT-01 добавляет независимые consumer expectations Appeals для Checking/Results и проверяет статическую совместимость; runtime-обработчики и provider-consumer интеграция по-прежнему не объявляются завершёнными.
 
 ## Проверка
 

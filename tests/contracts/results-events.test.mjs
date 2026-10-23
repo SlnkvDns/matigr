@@ -50,8 +50,8 @@ test('Applied receipts preserve source/final publication and require a no-op rec
   assert.equal(noop.payload.basePublicationId, noop.payload.publicationId);
   assert.equal(changed.payload.changed, true);
   assert.notEqual(changed.payload.basePublicationId, changed.payload.publicationId);
-  assert.equal(changed.payload.selectedReviewerId, 'jury-a');
-  assert.equal(changed.payload.reviewerId, 'senior-1');
+  assert.equal(changed.payload.selectedReviewerId, '6b8e3a04-ab14-5bdd-92cc-4a767e67f29b');
+  assert.equal(changed.payload.reviewerId, '6adf74af-fc84-5afb-8708-0db40939d2ff');
   assert.equal(changed.payload.evaluationDecisionOrigin, 'SeniorEscalation');
   assert.ok(changed.payload.escalationId);
   for (const field of ['basePublicationId', 'publicationId', 'selectedReviewerId', 'reviewerId', 'evaluationDecisionOrigin']) {

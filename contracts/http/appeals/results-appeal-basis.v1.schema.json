@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/http/appeals/results-appeal-basis.v1.schema.json",
+  "title": "ResultsAppealBasis",
+  "description": "Appeals consumer expectation for the Results-owned internal published-basis response. It is evidence, not an authorization decision.",
+  "type": "object",
+  "$defs": {
+    "opaqueId": { "type": "string", "minLength": 1, "description": "Opaque identifier; do not derive rights or ordering from its value." },
+    "positiveVersion": { "type": "string", "pattern": "^[1-9][0-9]*$", "description": "Exact positive decimal version; never parse through JavaScript Number." }
+  },
+  "properties": {
+    "resultId": { "$ref": "#/$defs/opaqueId" },
+    "resultVersion": { "$ref": "#/$defs/positiveVersion" },
+    "tournamentId": { "$ref": "#/$defs/opaqueId" },
+    "teamId": { "$ref": "#/$defs/opaqueId" },
+    "taskId": { "$ref": "#/$defs/opaqueId" },
+    "solutionId": { "$ref": "#/$defs/opaqueId" },
+    "materialVersionId": { "$ref": "#/$defs/opaqueId" },
+    "sourceCheckId": { "$ref": "#/$defs/opaqueId" },
+    "decisionOrigin": { "enum": ["OrdinaryReview", "AppealReview", "SeniorEscalation"] },
+    "outcome": { "enum": ["Correct", "Incorrect"] },
+    "scoreRuleVersion": { "$ref": "#/$defs/opaqueId" },
+    "publicationId": { "$ref": "#/$defs/opaqueId" },
+    "publishedAt": { "type": "string", "format": "date-time", "pattern": "Z$", "description": "UTC." },
+    "publicationState": { "const": "Published" }
+  },
+  "required": ["resultId", "resultVersion", "tournamentId", "teamId", "taskId", "solutionId", "materialVersionId", "sourceCheckId", "decisionOrigin", "outcome", "scoreRuleVersion", "publicationId", "publishedAt", "publicationState"],
+  "additionalProperties": false
+}

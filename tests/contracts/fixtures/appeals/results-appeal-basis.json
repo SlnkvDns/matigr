@@ -1,0 +1,16 @@
+{
+  "resultId": "result-1",
+  "resultVersion": "1",
+  "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+  "teamId": "ce3eb69e-e2b8-5f58-a45c-40c9d71d0031",
+  "taskId": "acdc6594-8ac1-5f18-bb65-def577a79950",
+  "solutionId": "19537a57-dbab-56eb-a167-e04a7b3104fe",
+  "materialVersionId": "3be2c5aa-ff91-5af7-8649-edfeebebd0fc",
+  "sourceCheckId": "check-initial-1",
+  "decisionOrigin": "OrdinaryReview",
+  "outcome": "Correct",
+  "scoreRuleVersion": "1",
+  "publicationId": "publication-base-1",
+  "publishedAt": "2026-10-23T04:00:00Z",
+  "publicationState": "Published"
+}

@@ -1,0 +1,58 @@
+[
+  {
+    "name": "AppealsRecheckRequested",
+    "schema": "contracts/events/appeals/recheck-requested.v1.schema.json",
+    "direction": "outgoing",
+    "producer": "Appeals",
+    "routes": ["appeals.recheck-requested.v1"],
+    "consumers": ["Checking"]
+  },
+  {
+    "name": "AppealsCheckCompleted",
+    "schema": "contracts/events/appeals/consumers/check-completed.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Checking",
+    "routes": ["checking.check-completed.appeal.v1"],
+    "consumers": ["Appeals"]
+  },
+  {
+    "name": "AppealsRecheckAssigned",
+    "schema": "contracts/events/appeals/consumers/recheck-assigned.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Checking",
+    "routes": ["checking.recheck-assigned.v1"],
+    "consumers": ["Appeals"]
+  },
+  {
+    "name": "AppealsRecheckEscalated",
+    "schema": "contracts/events/appeals/consumers/recheck-escalated.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Checking",
+    "routes": ["checking.recheck-escalated.v1"],
+    "consumers": ["Appeals"]
+  },
+  {
+    "name": "AppealsRecheckRequestRejected",
+    "schema": "contracts/events/appeals/consumers/recheck-request-rejected.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Checking",
+    "routes": ["checking.recheck-request-rejected.v1"],
+    "consumers": ["Appeals"]
+  },
+  {
+    "name": "AppealsResultEvaluationApplied",
+    "schema": "contracts/events/appeals/consumers/result-evaluation-applied.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Results",
+    "routes": ["results.result-evaluation-applied.appeal.v1"],
+    "consumers": ["Appeals"]
+  },
+  {
+    "name": "AppealsResultEvaluationRejected",
+    "schema": "contracts/events/appeals/consumers/result-evaluation-rejected.v1.schema.json",
+    "direction": "incoming",
+    "producer": "Results",
+    "routes": ["results.result-evaluation-rejected.appeal.v1"],
+    "consumers": ["Appeals"]
+  }
+]

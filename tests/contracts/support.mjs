@@ -9,7 +9,8 @@ export const root = path.resolve(import.meta.dirname, '../..');
 export async function json(file) { return JSON.parse(await readFile(path.join(root, file), 'utf8')); }
 export const checkingCatalog = await json('contracts/events/checking/catalog.json');
 export const resultsCatalog = await json('contracts/events/results/catalog.json');
-export const catalog = [...checkingCatalog, ...resultsCatalog];
+export const appealsCatalog = await json('contracts/events/appeals/catalog.json');
+export const catalog = [...checkingCatalog, ...resultsCatalog, ...appealsCatalog];
 const ajv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true, coerceTypes: false });
 addFormats(ajv);
 export const schemas = new Map();
@@ -27,15 +28,15 @@ export function validateMessage(name, message, { producer = false } = {}) {
   assert.ok(validator, `Unknown message ${name}`);
   assert.ok(validator(message), `${name}: ${ajv.errorsText(validator.errors)}`);
   const payload = message.payload;
-  const aggregateId = name === 'RecheckRequested' ? payload.appealId
-    : name === 'RecheckRequestRejected' ? payload.recheckRequestId
-      : name === 'ResultEvaluationApplied' || name === 'ResultEvaluationRejected' ? payload.evaluationId : payload.checkId;
+  const aggregateId = name.endsWith('RecheckRequested') ? payload.appealId
+    : name.endsWith('RecheckRequestRejected') ? payload.recheckRequestId
+      : name.endsWith('ResultEvaluationApplied') || name.endsWith('ResultEvaluationRejected') ? payload.evaluationId : payload.checkId;
   assert.equal(message.aggregateId, aggregateId, 'Envelope aggregate identity mismatch');
-  if (name === 'RecheckAssigned' && payload.assignmentKind === 'Selected')
+  if (name.endsWith('RecheckAssigned') && payload.assignmentKind === 'Selected')
     assert.equal(payload.reviewerId, payload.selectedReviewerId, 'Selected reviewer mismatch');
-  if (name === 'CheckCompleted' && payload.decisionOrigin === 'AppealReview')
+  if (name.endsWith('CheckCompleted') && payload.decisionOrigin === 'AppealReview')
     assert.equal(payload.reviewerId, payload.selectedReviewerId, 'AppealReview reviewer mismatch');
-  if (name === 'RecheckEscalated')
+  if (name.endsWith('RecheckEscalated'))
     assert.equal(payload.releasedReviewerId, payload.selectedReviewerId, 'Released reviewer mismatch');
   if (producer) {
     // Producer output is restricted to declared fields; readers tolerate optional
@@ -49,8 +50,10 @@ export function validateMessage(name, message, { producer = false } = {}) {
 
 export const checkingOpenapiPath = path.join(root, 'contracts/http/checking/openapi.json');
 export const resultsOpenapiPath = path.join(root, 'contracts/http/results/openapi.json');
+export const appealsOpenapiPath = path.join(root, 'contracts/http/appeals/openapi.json');
 export const openapi = await SwaggerParser.validate(checkingOpenapiPath, { resolve: { http: false } });
 export const resultsOpenapi = await SwaggerParser.validate(resultsOpenapiPath, { resolve: { http: false } });
+export const appealsOpenapi = await SwaggerParser.validate(appealsOpenapiPath, { resolve: { http: false } });
 const httpAjv = new Ajv2020({ strict: true, strictRequired: false, allErrors: true, coerceTypes: false });
 addFormats(httpAjv);
 function rewriteHttpRefs(value) {
@@ -79,6 +82,22 @@ export function validateResultsHttp(name, value) {
   assert.ok(validator(value), `${name}: ${httpAjv.errorsText(validator.errors)}`);
   return value;
 }
+const appealsHttpRoot = { $id: 'urn:matigr:appeals:http:v1', $defs: rewriteHttpRefs(appealsOpenapi.components.schemas) };
+httpAjv.addSchema(appealsHttpRoot);
+const appealsHttpValidators = new Map(Object.keys(appealsHttpRoot.$defs).map(name =>
+  [name, httpAjv.compile({ $ref: `${appealsHttpRoot.$id}#/$defs/${name}` })]));
+export const appealsBasisSchema = await json('contracts/http/appeals/results-appeal-basis.v1.schema.json');
+const appealsBasisValidator = httpAjv.compile(appealsBasisSchema);
+export function validateAppealsHttp(name, value) {
+  const validator = appealsHttpValidators.get(name);
+  assert.ok(validator, `Unknown Appeals HTTP schema ${name}`);
+  assert.ok(validator(value), `${name}: ${httpAjv.errorsText(validator.errors)}`);
+  return value;
+}
+export function validateAppealBasis(value) {
+  assert.ok(appealsBasisValidator(value), `ResultsAppealBasis: ${httpAjv.errorsText(appealsBasisValidator.errors)}`);
+  return value;
+}
 export function resolveObject(value) {
   if (!value?.$ref) return value;
   assert.ok(value.$ref.startsWith('#/'), 'Only local OpenAPI refs are permitted');
@@ -88,4 +107,9 @@ export function resolveResultsObject(value) {
   if (!value?.$ref) return value;
   assert.ok(value.$ref.startsWith('#/'), 'Only local Results OpenAPI refs are permitted');
   return resolveResultsObject(value.$ref.slice(2).split('/').reduce((object, key) => object[key], resultsOpenapi));
+}
+export function resolveAppealsObject(value) {
+  if (!value?.$ref) return value;
+  assert.ok(value.$ref.startsWith('#/'), 'Only local Appeals OpenAPI refs are permitted');
+  return resolveAppealsObject(value.$ref.slice(2).split('/').reduce((object, key) => object[key], appealsOpenapi));
 }

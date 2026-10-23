@@ -1,0 +1,170 @@
+{
+  "openapi": "3.1.1",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Matigr Appeals API",
+    "version": "1.0.0",
+    "description": "Contract-first Appeals API for the approved MVP. Only health routes are implemented in the current service foundation. Registration never starts a recheck; claim is manual. No upload, withdrawal, pre-check rejection, tournament CRUD, or client-selected identity."
+  },
+  "servers": [{ "url": "/" }],
+  "security": [],
+  "tags": [{ "name": "Appeals" }, { "name": "Development" }, { "name": "Health" }],
+  "paths": {
+    "/api/v1/appeals": {
+      "post": {
+        "operationId": "submitAppeal",
+        "tags": ["Appeals"],
+        "description": "Registers one permanent appeal for the authenticated team/task/tournament tuple after Results confirms the current Published basis. teamId and author are taken from the verified server-side subject. Registration creates Registered only; it does not enqueue RecheckRequested or select a reviewer.",
+        "x-permission": "Team subject in tournament scope; subject team must match the Results basis",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/SubmitAppealRequest" } } } },
+        "responses": {
+          "201": { "description": "Appeal registered", "headers": { "Location": { "$ref": "#/components/headers/AppealLocation" }, "ETag": { "$ref": "#/components/headers/AppealETag" }, "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppealView" } } } },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "409": { "$ref": "#/components/responses/SubmitConflict" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/appeals/me": {
+      "get": {
+        "operationId": "getMyAppeals",
+        "tags": ["Appeals"],
+        "description": "Returns only appeals belonging to the team bound to the verified subject. No raw broker payloads, tokens or material are included.",
+        "x-permission": "Team subject; teamId comes from server-side identity",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [{ "name": "tournamentId", "in": "query", "required": true, "schema": { "$ref": "#/components/schemas/OpaqueId" } }],
+        "responses": {
+          "200": { "description": "Own appeal states", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppealList" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/appeals/tournaments/{tournamentId}": {
+      "get": {
+        "operationId": "getRegisteredAppeals",
+        "tags": ["Appeals"],
+        "description": "Jury queue of appeals awaiting manual selection. Registered is the only queue state exposed by this operation; read access does not claim or reserve an appeal.",
+        "x-permission": "Jury in tournament scope",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [
+          { "$ref": "#/components/parameters/TournamentId" },
+          { "name": "state", "in": "query", "required": false, "schema": { "const": "Registered" }, "description": "Optional explicit filter; only Registered is supported by this queue." }
+        ],
+        "responses": {
+          "200": { "description": "Registered queue; each item contains only the minimum basis/status needed for a manual choice", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppealQueue" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/appeals/{appealId}": {
+      "get": {
+        "operationId": "getAppeal",
+        "tags": ["Appeals"],
+        "description": "Private process view for its team or authorized jury in scope. The ETag is the Appeal aggregate version, not a Checking or Results version.",
+        "x-permission": "Owning team or Jury in tournament scope",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/AppealId" }],
+        "responses": {
+          "200": { "description": "Current Appeal process view", "headers": { "ETag": { "$ref": "#/components/headers/AppealETag" }, "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppealView" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/appeals/{appealId}/claim": {
+      "post": {
+        "operationId": "claimAppeal",
+        "tags": ["Appeals"],
+        "description": "Manually selects the authenticated jury member for one current Registered version and emits the same attempt through RecheckRequested. requestedReviewerId is server-derived; 202 means AcceptedAwaitingRecheck, not a confirmed Checking assignment. A ReviewerBusy response does not automatically retry or claim another reviewer.",
+        "x-permission": "Jury in the Appeal tournament scope; selected reviewer is the authenticated subject",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/AppealId" }, { "$ref": "#/components/parameters/IdempotencyKey" }, { "$ref": "#/components/parameters/IfMatch" }],
+        "responses": {
+          "202": { "description": "Selection attempt saved; Checking assignment is still pending", "headers": { "Location": { "$ref": "#/components/headers/AppealLocation" }, "ETag": { "$ref": "#/components/headers/AppealETag" }, "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClaimAccepted" } } } },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/ClaimConflict" },
+          "412": { "$ref": "#/components/responses/VersionConflict" },
+          "428": { "$ref": "#/components/responses/IfMatchRequired" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/dev/v1/tournaments/{tournamentId}/end-facts": {
+      "post": {
+        "operationId": "recordLocalTournamentEndFact",
+        "tags": ["Development"],
+        "description": "Local/Test-only adapter for a manually supplied tournament-end fact. Route is absent outside Local/Test. It closes only the Appeals submission window and does not provide tournament administration or scheduled closure.",
+        "x-permission": "Organizer in tournament scope, plus Local/Test environment",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }, { "$ref": "#/components/parameters/IdempotencyKey" }],
+        "requestBody": { "required": true, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/EndFactRequest" } } } },
+        "responses": {
+          "200": { "description": "Window closed or matching successful replay", "headers": { "ETag": { "$ref": "#/components/headers/WindowETag" }, "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/ClosedWindow" } } } },
+          "400": { "$ref": "#/components/responses/InvalidRequest" },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "409": { "$ref": "#/components/responses/IdempotencyConflict" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/health/live": { "get": { "operationId": "getAppealsLiveness", "tags": ["Health"], "security": [], "responses": { "200": { "description": "Process is alive" } } } },
+    "/health/ready": { "get": { "operationId": "getAppealsReadiness", "tags": ["Health"], "security": [], "responses": { "200": { "description": "Appeals database is ready" }, "503": { "description": "Appeals database is unavailable" } } } }
+  },
+  "components": {
+    "securitySchemes": { "UserBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "User token verified by this service; object ownership and tournament scope are checked server-side." } },
+    "parameters": {
+      "TournamentId": { "name": "tournamentId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/OpaqueId" } },
+      "AppealId": { "name": "appealId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/OpaqueId" } },
+      "IdempotencyKey": { "name": "Idempotency-Key", "in": "header", "required": true, "schema": { "type": "string", "minLength": 1 }, "description": "Opaque client operation key. Same operation/payload replays its stored response; different payload conflicts." },
+      "IfMatch": { "name": "If-Match", "in": "header", "required": true, "schema": { "type": "string", "pattern": "^\"[1-9][0-9]*\"$" }, "description": "One strong Appeal version ETag; stale version returns 412 and is not automatically rebased." }
+    },
+    "headers": {
+      "AppealLocation": { "description": "URL of the created/current Appeal resource.", "schema": { "type": "string", "format": "uri-reference" } },
+      "AppealETag": { "description": "Strong validator for the Appeal aggregate version.", "schema": { "type": "string", "pattern": "^\"[1-9][0-9]*\"$" } },
+      "WindowETag": { "description": "Strong validator for the local submission-window version.", "schema": { "type": "string", "pattern": "^\"[1-9][0-9]*\"$" } },
+      "PrivateCache": { "description": "Private representation/errors must not be stored by shared caches.", "schema": { "type": "string", "const": "private, no-store" } }
+    },
+    "schemas": {
+      "OpaqueId": { "type": "string", "minLength": 1, "description": "Opaque identifier; do not derive rights or ordering from its value." },
+      "PositiveVersion": { "type": "string", "pattern": "^[1-9][0-9]*$", "description": "Exact decimal version; never parse through JavaScript Number." },
+      "Outcome": { "enum": ["Correct", "Incorrect"] },
+      "AppealState": { "enum": ["Registered", "AcceptedAwaitingRecheck", "RecheckPending", "AwaitingSeniorReview", "AwaitingResultApplication", "Closed", "NeedsResolution"] },
+      "ProblemDetails": { "type": "object", "required": ["type", "title", "status", "code", "correlationId"], "additionalProperties": false, "properties": { "type": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "integer" }, "code": { "type": "string", "minLength": 1 }, "correlationId": { "$ref": "#/components/schemas/OpaqueId" } } },
+      "SubmitAppealRequest": { "type": "object", "required": ["resultId", "expectedResultVersion"], "additionalProperties": false, "properties": { "resultId": { "$ref": "#/components/schemas/OpaqueId" }, "expectedResultVersion": { "$ref": "#/components/schemas/PositiveVersion" } } },
+      "EndFactRequest": { "type": "object", "required": ["factId"], "additionalProperties": false, "properties": { "factId": { "$ref": "#/components/schemas/OpaqueId" } } },
+      "AppealSummary": { "type": "object", "required": ["appealId", "tournamentId", "teamId", "taskId", "state", "submittedAt", "version"], "additionalProperties": false, "properties": { "appealId": { "$ref": "#/components/schemas/OpaqueId" }, "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "teamId": { "$ref": "#/components/schemas/OpaqueId" }, "taskId": { "$ref": "#/components/schemas/OpaqueId" }, "state": { "$ref": "#/components/schemas/AppealState" }, "submittedAt": { "type": "string", "format": "date-time", "pattern": "Z$" }, "version": { "$ref": "#/components/schemas/PositiveVersion" } } },
+      "AppealList": { "type": "object", "required": ["tournamentId", "items"], "additionalProperties": false, "properties": { "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/AppealSummary" } } } },
+      "AppealQueue": { "type": "object", "required": ["tournamentId", "items"], "additionalProperties": false, "properties": { "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "items": { "type": "array", "items": { "$ref": "#/components/schemas/AppealSummary" } } } },
+      "AppealView": { "type": "object", "required": ["appealId", "tournamentId", "teamId", "taskId", "state", "version", "resultId", "resultVersion", "baseCheckId", "basePublicationId", "baseOutcome", "submittedAt"], "additionalProperties": false, "properties": { "appealId": { "$ref": "#/components/schemas/OpaqueId" }, "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "teamId": { "$ref": "#/components/schemas/OpaqueId" }, "taskId": { "$ref": "#/components/schemas/OpaqueId" }, "state": { "$ref": "#/components/schemas/AppealState" }, "version": { "$ref": "#/components/schemas/PositiveVersion" }, "resultId": { "$ref": "#/components/schemas/OpaqueId" }, "resultVersion": { "$ref": "#/components/schemas/PositiveVersion" }, "baseCheckId": { "$ref": "#/components/schemas/OpaqueId" }, "basePublicationId": { "$ref": "#/components/schemas/OpaqueId" }, "finalPublicationId": { "$ref": "#/components/schemas/OpaqueId", "description": "Present only after a validated Applied receipt closes the Appeal." }, "baseOutcome": { "$ref": "#/components/schemas/Outcome" }, "submittedAt": { "type": "string", "format": "date-time", "pattern": "Z$" }, "recheckRequestId": { "$ref": "#/components/schemas/OpaqueId" }, "checkId": { "$ref": "#/components/schemas/OpaqueId" } } },
+      "ClaimAccepted": { "type": "object", "required": ["appealId", "state", "version"], "additionalProperties": false, "properties": { "appealId": { "$ref": "#/components/schemas/OpaqueId" }, "state": { "const": "AcceptedAwaitingRecheck" }, "version": { "$ref": "#/components/schemas/PositiveVersion" } } },
+      "ClosedWindow": { "type": "object", "required": ["tournamentId", "state", "version", "factId"], "additionalProperties": false, "properties": { "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "state": { "const": "Closed" }, "version": { "$ref": "#/components/schemas/PositiveVersion" }, "factId": { "$ref": "#/components/schemas/OpaqueId" } } }
+    },
+    "responses": {
+      "InvalidRequest": { "description": "400: InvalidRequest. Request shape is invalid.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "Unauthorized": { "description": "401: Unauthorized. Missing or invalid user token.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "Forbidden": { "description": "403: Forbidden. Subject lacks role, team ownership, or tournament scope.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "NotFound": { "description": "404: NotFound. Object is unknown or not visible to this subject.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "SubmitConflict": { "description": "409: AlreadyAppealed, WindowClosed, BaseNotAppealable, ResultVersionConflict, IdempotencyConflict.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" }, "examples": { "AlreadyAppealed": { "value": { "type": "about:blank", "title": "Conflict", "status": 409, "code": "AlreadyAppealed", "correlationId": "request-1" } }, "WindowClosed": { "value": { "type": "about:blank", "title": "Conflict", "status": 409, "code": "WindowClosed", "correlationId": "request-1" } }, "BaseNotAppealable": { "value": { "type": "about:blank", "title": "Conflict", "status": 409, "code": "BaseNotAppealable", "correlationId": "request-1" } }, "ResultVersionConflict": { "value": { "type": "about:blank", "title": "Conflict", "status": 409, "code": "ResultVersionConflict", "correlationId": "request-1" } } } } } },
+      "ClaimConflict": { "description": "409: Conflict. The Appeal is not claimable in its current state, or a selection attempt is already pending.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "VersionConflict": { "description": "412: AppealVersionConflict. The current version is not substituted automatically.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "IfMatchRequired": { "description": "428: IfMatchRequired. Claim requires one strong Appeal ETag.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "IdempotencyConflict": { "description": "409: IdempotencyConflict. Same key with different normalized request payload.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "Unavailable": { "description": "503: DependencyUnavailable. Results or another temporary dependency is unavailable; no quota is consumed and no event is acknowledged as processed.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } }
+    }
+  }
+}

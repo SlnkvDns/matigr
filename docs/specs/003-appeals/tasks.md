@@ -2,7 +2,7 @@
 
 Актуализация 23 октября 2026 года: пользователь явно поручил реализацию по утверждённым документам, начиная с V0 / CHK-INF-01, с соблюдением зависимостей. Одобрение планов сохраняется; прежние фразы о непорученной реализации ниже описывают состояние при согласовании. Текущее выполнение и проверки — в [журнале реализации](../../implementation/progress.md).
 
-Статус: **одобрены пользователем 23 октября 2026 года** вместе с планами и задачами двух других сервисов. APL-INF-01 выполнена в рамках поручения реализации; остальные задачи реализации открыты. Основания — [plan.md](plan.md), [одобренная спецификация](spec.md) и [общие контракты/V0–V6](../../architecture/implementation-contracts.md). Веха `MVP-REVIEW` пройдена.
+Статус: **одобрены пользователем 23 октября 2026 года** вместе с планами и задачами двух других сервисов. APL-INF-01 и APL-INT-01 выполнены в рамках поручения реализации; остальные задачи реализации открыты. Основания — [plan.md](plan.md), [одобренная спецификация](spec.md) и [общие контракты/V0–V6](../../architecture/implementation-contracts.md). Веха `MVP-REVIEW` пройдена.
 
 Глобальные зависимости: [Checking](../001-checking/tasks.md), [Results](../002-results/tasks.md). Каждая строка — отдельный проверяемый результат. T05 принят вместе с планами: Submit/ручной конец сериализуются на окне Appeals; будущий upstream Q02 остаётся открытым. Не выбирать другую границу молча. Q07/Q15 не превращаются в новые команды коррекции/отзыва. Все сквозные операции используют уже принятый материал, без upload.
 
@@ -26,7 +26,7 @@
 
 | ID | Сценарий | Зависимости | Работа и проверяемый результат |
 | --- | --- | --- | --- |
-| APL-INT-01 | V0 | APL-INF-01, CHK-INT-01, RES-INT-01 | Опубликовать Appeals OpenAPI и producer schema RecheckRequested; consumer fixtures всех Checking facts/Results receipts и internal HTTP basis. Проверка: requestedReviewerId из субъекта, wire recheckRequestId и исходное основание совпадают у всех сторон |
+| APL-INT-01 | V0 | APL-INF-01, CHK-INT-01, RES-INT-01 | **Выполнена 23 октября 2026 года**, см. [журнал](../../implementation/progress.md). Опубликованы Appeals OpenAPI, producer schema RecheckRequested, отдельные consumer schemas всех фактов Checking/квитанций Results и ожидание internal HTTP basis. Fixtures проверяют requestedReviewerId из fixture subject, `recheckRequestId`, неизменяемое исходное основание и отдельные base/final publicationId |
 | APL-INT-02 | V3 | APL-INT-01, RES-BE-04, CHK-BE-04 | Реализовать Results HTTP adapter с service auth, timeout/cancellation и различением 404/409/503; не держать SQL-транзакцию при запросе. Проверка: недоверенный snapshot/кэш/browser fields не разрешают Submit |
 | APL-INT-03 | V3 | APL-BE-05, CHK-INT-02, CHK-INT-03 | Подключить outbox RecheckRequested/inbox и начальный process manager RecheckAssigned/RecheckRequestRejected. Проверка: current attempt/version/hash, busy→Registered только по подтверждению, stale reply не снимает новое назначение; таймаут не создаёт новый request |
 | APL-INT-04 | V3 | APL-INT-03, APL-INT-05, APL-INT-07, CHK-INT-04, RES-INT-03 | Выполнить совместимость HTTP/schemas/routing обычного апелляционного маршрута и негативных payload. Проверка: обе стороны понимают выбранного жюри, immutable basis и семантику двух publicationId; ошибки/версии согласованы. Runtime senior path принимается отдельной задачей V5 |

@@ -1,0 +1,382 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/events/appeals/consumers/check-completed.v1.schema.json",
+  "title": "CheckCompleted (Appeals consumer expectation)",
+  "description": "Appeals consumes only the Appeal kind of the Checking CheckCompleted integration contract.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "messageType": {
+      "const": "matigr.checking.check-completed"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "producer": {
+      "const": "Checking"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "UTC; not an ordering guarantee."
+    },
+    "aggregateType": {
+      "const": "Check"
+    },
+    "aggregateId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "aggregateVersion": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "causationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "checkId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "solutionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "materialVersionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "tournamentId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "teamId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "taskId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "Initial",
+            "Appeal"
+          ]
+        },
+        "reviewRevision": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "Correct",
+            "Incorrect"
+          ]
+        },
+        "decisionOrigin": {
+          "type": "string",
+          "enum": [
+            "OrdinaryReview",
+            "AppealReview",
+            "SeniorEscalation"
+          ]
+        },
+        "reviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "assignmentId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "completedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$",
+          "description": "UTC; not an ordering guarantee."
+        },
+        "expectedResultVersion": {
+          "type": "string",
+          "pattern": "^(0|[1-9][0-9]*)$",
+          "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+        },
+        "appealId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "recheckRequestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "selectedReviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "resultId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "baseCheckId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "publicationId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "escalationId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        }
+      },
+      "required": [
+        "checkId",
+        "solutionId",
+        "materialVersionId",
+        "tournamentId",
+        "teamId",
+        "taskId",
+        "kind",
+        "reviewRevision",
+        "outcome",
+        "decisionOrigin",
+        "reviewerId",
+        "assignmentId",
+        "completedAt",
+        "expectedResultVersion"
+      ],
+      "additionalProperties": true,
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "capability",
+            "capabilityHash",
+            "capabilityCiphertext",
+            "assignmentToken",
+            "token",
+            "accessToken",
+            "score",
+            "previousScore",
+            "points",
+            "total",
+            "scoreRuleVersion",
+            "comment",
+            "commentary",
+            "material",
+            "materialRef",
+            "materialFile",
+            "materialUrl",
+            "requestId"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "Initial"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "expectedResultVersion": {
+                "const": "0"
+              },
+              "decisionOrigin": {
+                "enum": [
+                  "OrdinaryReview",
+                  "SeniorEscalation"
+                ]
+              }
+            },
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "appealId"
+                  ]
+                },
+                {
+                  "required": [
+                    "recheckRequestId"
+                  ]
+                },
+                {
+                  "required": [
+                    "selectedReviewerId"
+                  ]
+                },
+                {
+                  "required": [
+                    "resultId"
+                  ]
+                },
+                {
+                  "required": [
+                    "baseCheckId"
+                  ]
+                },
+                {
+                  "required": [
+                    "publicationId"
+                  ]
+                }
+              ]
+            }
+          },
+          "else": {
+            "required": [
+              "appealId",
+              "recheckRequestId",
+              "selectedReviewerId",
+              "resultId",
+              "baseCheckId",
+              "publicationId"
+            ],
+            "properties": {
+              "expectedResultVersion": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]*$",
+                "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+              },
+              "decisionOrigin": {
+                "enum": [
+                  "AppealReview",
+                  "SeniorEscalation"
+                ]
+              }
+            }
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "decisionOrigin": {
+                "const": "SeniorEscalation"
+              }
+            },
+            "required": [
+              "decisionOrigin"
+            ]
+          },
+          "then": {
+            "required": [
+              "escalationId"
+            ]
+          },
+          "else": {
+            "not": {
+              "anyOf": [
+                {
+                  "required": [
+                    "escalationId"
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "messageId",
+    "messageType",
+    "schemaVersion",
+    "producer",
+    "occurredAt",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "causationId",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "propertyNames": {
+    "not": {
+      "enum": [
+        "capability",
+        "capabilityHash",
+        "capabilityCiphertext",
+        "assignmentToken",
+        "token",
+        "accessToken",
+        "score",
+        "previousScore",
+        "points",
+        "total",
+        "scoreRuleVersion",
+        "comment",
+        "commentary",
+        "material",
+        "materialRef",
+        "materialFile",
+        "materialUrl",
+        "requestId"
+      ]
+    }
+  },
+  "allOf": [
+    {
+      "properties": {
+        "payload": {
+          "type": "object",
+          "properties": {
+            "kind": {
+              "const": "Appeal"
+            }
+          },
+          "required": [
+            "kind"
+          ]
+        }
+      },
+      "required": [
+        "payload"
+      ]
+    }
+  ]
+}
