@@ -57,7 +57,8 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
     private void Correlate(ReviewProgress fact)
     {
         if (Attempt is null || fact.RequestId != Attempt.RequestId || fact.SelectedReviewerId != Attempt.ReviewerId
-            || fact.CheckId == Guid.Empty || fact.CheckVersion < 1 || (Progress is not null && Progress.CheckId != fact.CheckId))
+            || fact.CheckId == Guid.Empty || fact.CheckVersion < 1 || (Progress is not null && Progress.CheckId != fact.CheckId)
+            || (Receipt is not null && Receipt.EvaluationId != fact.CheckId))
             throw new AppealRuleException("RecheckCorrelationConflict");
         if (fact.AssignmentId == Guid.Empty || fact.ReviewerId == Guid.Empty || fact.EscalationId == Guid.Empty
             || (fact.EscalationId is null && fact.ReviewerId is { } reviewer && reviewer != fact.SelectedReviewerId)
