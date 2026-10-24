@@ -177,4 +177,8 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-E2E-04 (24 октября 2026): Браузерный V5 прошёл Team Submit→ручной selected→refuse/свобода→тот же Check в senior очереди→окончательный Correct→Results→Closed. Delivery order Applied прежде Escalated/Assigned и late duplicates проверен настоящим брокером; immutable selected и actual senior lineage сохранены. Доказательства tests/e2e/v5.md, локальный скриншот Closed; права старого assignment не восстановились.
 
-Выполнено **80 из 82**, осталось **2**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Финальная общая проверка 24 октября 2026: `scripts/check.ps1` успешна — **441 тест** (111 frontend, 226 backend, 99 contract, 5 fixture), без пропусков; Release build 0 предупреждений/ошибок, typecheck, production build, DTO, архитектурные границы/ссылки/DAG успешны. Отдельные последние PostgreSQL/broker gates: Checking 46 + checkpoint, Results 27, Appeals 31; real broker/UI V3–V5 проверены отдельно. Удалённый CI не запускался.
+
+Контрольная точка [V6](../../tests/e2e/v6.md): своевременная Beta/task1 зарегистрирована, organizer-only manual end проверен (Team403/Organizer200), прежний Submit replay201 после конца. Турнир Closed, Initial Gamma/task2 Queued, Beta/task1 Registered. Скрипт `check-manual-end-e2e.mjs prepare` успешно выполнен; `verify` пока не запускался. Browser TakeNext не выполнен: automatic approval review сначала сообщил лимит, после возобновления запретил повторный browser access. Ни обхода инструмента, ни фиктивной приёмки нет. Ждём восстановления разрешённого browser доступа для последних двух gate; все данные/volumes/secrets сохранены.
+
+Выполнено **80 из 82**, осталось **2**: **CHK-E2E-03**, **APL-E2E-05**. MVP и исходные стоимости не расширялись. Рабочая ветка `codex/implementation-v0`; remote не изменялся.
