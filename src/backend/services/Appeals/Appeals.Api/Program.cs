@@ -1,6 +1,7 @@
 using Matigr.Appeals.Application;
 using Matigr.Appeals.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Matigr.Appeals.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAppealsInfrastructure(builder.Configuration);
@@ -18,6 +19,7 @@ if (app.Environment.IsEnvironment("Local"))
 }
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
+app.MapAppealCommands();
 app.MapGet("/health/ready", async (IAppealsReadiness readiness, CancellationToken cancellationToken) =>
 {
     var state = await readiness.ProbeAsync(cancellationToken);
