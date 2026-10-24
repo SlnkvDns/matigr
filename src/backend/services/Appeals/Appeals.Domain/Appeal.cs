@@ -21,11 +21,13 @@ public sealed record ReviewProgress(Guid RequestId, Guid CheckId, Guid SelectedR
     Guid? AssignmentId, Guid? ReviewerId, Guid? EscalationId);
 public sealed record PublishedReceipt(Guid EvaluationId, Guid RequestId, Guid SelectedReviewerId, Guid ReviewerId, Guid AssignmentId,
     DecisionOrigin Origin, Guid? EscalationId, PublishedBasis Basis, long ResultVersion, Guid PublicationId, Outcome Outcome, bool Changed);
+public sealed record EvaluationRejection(Guid EvaluationId, Guid RequestId, Guid SelectedReviewerId, Guid ReviewerId, Guid AssignmentId,
+    DecisionOrigin Origin, Guid? EscalationId, string ReasonCode);
 
 // Local process model: no Checking/Results aggregate references and no scoring or assignment authority.
 public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset SubmittedAt, long WindowVersion,
     AppealState State = AppealState.Registered, long Version = 1, SelectionAttempt? Attempt = null,
-    ReviewProgress? Progress = null, PublishedReceipt? Receipt = null, string? Conflict = null)
+    ReviewProgress? Progress = null, PublishedReceipt? Receipt = null, string? Conflict = null, EvaluationRejection? Rejection = null)
 {
     private bool Terminal => State is AppealState.Closed or AppealState.NeedsResolution;
     public static Appeal Register(Guid id, PublishedBasis basis, Guid team, SubmissionWindow window, DateTimeOffset now, bool quotaUsed)
@@ -58,7 +60,7 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
     {
         if (Attempt is null || fact.RequestId != Attempt.RequestId || fact.SelectedReviewerId != Attempt.ReviewerId
             || fact.CheckId == Guid.Empty || fact.CheckVersion < 1 || (Progress is not null && Progress.CheckId != fact.CheckId)
-            || (Receipt is not null && Receipt.EvaluationId != fact.CheckId))
+            || (Receipt is not null && Receipt.EvaluationId != fact.CheckId) || (Rejection is not null && Rejection.EvaluationId != fact.CheckId))
             throw new AppealRuleException("RecheckCorrelationConflict");
         if (fact.AssignmentId == Guid.Empty || fact.ReviewerId == Guid.Empty || fact.EscalationId == Guid.Empty
             || (fact.EscalationId is null && fact.ReviewerId is { } reviewer && reviewer != fact.SelectedReviewerId)
@@ -102,6 +104,21 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
     }
     public Appeal ResultRejected(Guid request, string reason) => Terminal || Attempt?.RequestId != request ? this
         : this with { State = AppealState.NeedsResolution, Version = checked(Version + 1), Conflict = reason };
+    public Appeal Rejected(EvaluationRejection rejection)
+    {
+        if (Attempt is null || rejection.RequestId != Attempt.RequestId || rejection.SelectedReviewerId != Attempt.ReviewerId
+            || new[] { rejection.EvaluationId, rejection.ReviewerId, rejection.AssignmentId }.Contains(Guid.Empty) || string.IsNullOrWhiteSpace(rejection.ReasonCode)
+            || (rejection.Origin == DecisionOrigin.AppealReview ? rejection.ReviewerId != rejection.SelectedReviewerId || rejection.EscalationId is not null
+                : rejection.Origin != DecisionOrigin.SeniorEscalation || rejection.EscalationId is null || rejection.EscalationId == Guid.Empty)
+            || (Progress is not null && Progress.CheckId != rejection.EvaluationId)) throw new AppealRuleException("ResultReceiptCorrelationConflict");
+        if (Terminal) {
+            if (Rejection == rejection) return this;
+            throw new AppealRuleException("ConflictingTerminalReceipt");
+        }
+        if (State == AppealState.Registered) throw new AppealRuleException("InvalidResultReceiptState");
+        return this with { State = AppealState.NeedsResolution, Version = checked(Version + 1), Conflict = rejection.ReasonCode,
+            Rejection = rejection, Attempt = Attempt with { State = AttemptState.Assigned } };
+    }
 }
 
 public sealed record SubmissionWindow(Guid TournamentId, bool Open = true, long Version = 1, Guid? EndFactId = null,

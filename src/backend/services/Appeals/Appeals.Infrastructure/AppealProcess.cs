@@ -64,22 +64,30 @@ internal sealed partial class AppealProcess(AppealsDbContext db) : IInboundHandl
                         throw new InvalidMessageException("AssignmentLineageConflict");
                     next = before.Observe(new(request, Id(p, "checkId"), attempt.ReviewerId, Version(envelope, "aggregateVersion"),
                         Id(p, "assignmentId"), Id(p, "reviewerId"), escalation), escalation.HasValue ? AppealState.AwaitingSeniorReview : AppealState.RecheckPending);
-                } else return new(false, "FinalProcessHandlerPending");
+                } else {
+                    next = ApplyFinal(name, p, envelope, before, out var handled);
+                    if (!handled) return new(false, "SeniorProgressHandlerPending");
+                }
             } catch (AppealRuleException e) { throw new InvalidMessageException(e.Message); }
         }
         if (next != before) {
             AppealStorage.Update(row, next); attempt.State = next.Attempt!.State.ToString(); attempt.ReasonCode = next.Conflict;
             db.History.Add(new() { HistoryId = Guid.NewGuid(), AppealId = appeal, Version = next.Version, State = next.State.ToString(),
-                RequestId = request, CheckId = next.Progress?.CheckId ?? next.Receipt?.EvaluationId, Snapshot = row.Snapshot, OccurredAt = DateTimeOffset.UtcNow });
+                RequestId = request, CheckId = next.Progress?.CheckId ?? next.Receipt?.EvaluationId ?? next.Rejection?.EvaluationId, Snapshot = row.Snapshot, OccurredAt = DateTimeOffset.UtcNow });
         }
         db.Inbox.Add(new() { Consumer = Consumer, MessageId = message, PayloadHash = hash, ProcessedAt = DateTimeOffset.UtcNow });
         await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return new(true);
     }
     private static void CheckBasis(JsonElement p, Appeal appeal)
     {
+        CheckTuple(p, appeal);
+        if (Id(p, "publicationId") != appeal.Basis.PublicationId) throw new InvalidMessageException("ProcessBasisConflict");
+    }
+    private static void CheckTuple(JsonElement p, Appeal appeal, bool material = true)
+    {
         var b = appeal.Basis;
-        if (Id(p, "resultId") != b.ResultId || Version(p, "expectedResultVersion") != b.ResultVersion || Id(p, "solutionId") != b.SolutionId
-            || Id(p, "materialVersionId") != b.MaterialVersionId || Id(p, "tournamentId") != b.TournamentId || Id(p, "teamId") != b.TeamId || Id(p, "taskId") != b.TaskId
-            || Id(p, "publicationId") != b.PublicationId) throw new InvalidMessageException("ProcessBasisConflict");
+        if ((p.TryGetProperty("resultId", out _) && Id(p, "resultId") != b.ResultId) || Version(p, "expectedResultVersion") != b.ResultVersion || Id(p, "solutionId") != b.SolutionId
+            || (material && Id(p, "materialVersionId") != b.MaterialVersionId) || Id(p, "tournamentId") != b.TournamentId || Id(p, "teamId") != b.TeamId || Id(p, "taskId") != b.TaskId)
+            throw new InvalidMessageException("ProcessBasisConflict");
     }
 }

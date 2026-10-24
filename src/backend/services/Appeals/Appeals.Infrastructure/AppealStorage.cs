@@ -22,14 +22,14 @@ internal static class AppealStorage
             ["resultId"] = b.ResultId.ToString("D"), ["resultVersion"] = Number(b.ResultVersion), ["baseCheckId"] = b.BaseCheckId.ToString("D"),
             ["basePublicationId"] = b.PublicationId.ToString("D"), ["baseOutcome"] = b.Outcome.ToString(), ["submittedAt"] = Stamp(a.SubmittedAt) };
         if (a.Attempt is { } attempt) view["recheckRequestId"] = attempt.RequestId.ToString("D");
-        if ((a.Progress?.CheckId ?? a.Receipt?.EvaluationId) is { } check) view["checkId"] = check.ToString("D");
+        if ((a.Progress?.CheckId ?? a.Receipt?.EvaluationId ?? a.Rejection?.EvaluationId) is { } check) view["checkId"] = check.ToString("D");
         if (a.Receipt is { } receipt) view["finalPublicationId"] = receipt.PublicationId.ToString("D");
         return JsonSerializer.Serialize(view, Json);
     }
     internal static void Update(AppealRow row, Appeal a)
     {
         row.State = a.State.ToString(); row.Version = a.Version; row.Snapshot = JsonSerializer.Serialize(a, Json);
-        row.CurrentRequestId = a.Attempt?.RequestId; row.CheckId = a.Progress?.CheckId ?? a.Receipt?.EvaluationId;
+        row.CurrentRequestId = a.Attempt?.RequestId; row.CheckId = a.Progress?.CheckId ?? a.Receipt?.EvaluationId ?? a.Rejection?.EvaluationId;
         row.FinalPublicationId = a.Receipt?.PublicationId;
     }
 }
