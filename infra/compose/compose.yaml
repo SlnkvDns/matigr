@@ -105,9 +105,12 @@ services:
       Identity__Issuer: matigr-local
       Identity__Audience: matigr-user-api
       Identity__PublicKeyPath: /run/secrets/dev_issuer_public
+      ServiceIdentity__Issuer: matigr-appeals-local
+      ServiceIdentity__Audience: matigr-results-internal
+      ServiceIdentity__PublicKeyPath: /run/secrets/appeals_results_public
     volumes:
       - ../fixtures:/fixtures:ro
-    secrets: [results_db_password, results_broker_password, dev_issuer_public]
+    secrets: [results_db_password, results_broker_password, dev_issuer_public, appeals_results_public]
     networks: [results-data, transport]
     ports: ['127.0.0.1:5102:8080']
     depends_on:
@@ -126,9 +129,13 @@ services:
       ASPNETCORE_ENVIRONMENT: Local
       ASPNETCORE_HTTP_PORTS: '8080'
       Fixtures__ManifestPath: /fixtures/manifest.json
+      Results__BaseUrl: http://results-api:8080
+      ResultsServiceIdentity__Issuer: matigr-appeals-local
+      ResultsServiceIdentity__Audience: matigr-results-internal
+      ResultsServiceIdentity__PrivateKeyPath: /run/matigr-service/private.pem
     volumes:
       - ../fixtures:/fixtures:ro
-    secrets: [appeals_db_password]
+    secrets: [appeals_db_password, appeals_results_private]
     networks: [appeals-data, transport]
     ports: ['127.0.0.1:5103:8080']
     depends_on:
@@ -147,6 +154,8 @@ secrets:
   dev_issuer_private: { file: ../../.local/secrets/dev-issuer-private.pem }
   dev_issuer_public: { file: ../../.local/secrets/dev-issuer-public.pem }
   capability_protection_key: { file: ../../.local/secrets/capability-protection-key }
+  appeals_results_private: { file: ../../.local/secrets/appeals-results-private.pem }
+  appeals_results_public: { file: ../../.local/secrets/appeals-results-public.pem }
 networks:
   checking-data: { internal: true }
   results-data: { internal: true }

@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile, chmod } from 'node:fs/promises';
-import { randomBytes, createHash } from 'node:crypto';
+import { randomBytes, createHash, generateKeyPairSync, createPublicKey } from 'node:crypto';
 import path from 'node:path';
 
 const root = path.resolve(import.meta.dirname, '..');
@@ -15,6 +15,18 @@ async function secret(name) {
   return value;
 }
 for (const service of ['checking', 'results', 'appeals']) await secret(`${service}_db_password`);
+const servicePrivate = path.join(secrets, 'appeals-results-private.pem');
+const servicePublic = path.join(secrets, 'appeals-results-public.pem');
+async function existing(file) { try { return await readFile(file, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } }
+let privatePem = await existing(servicePrivate); let publicPem = await existing(servicePublic);
+if ((privatePem === null) !== (publicPem === null)) throw new Error('Incomplete persisted service identity; refusing rotation');
+if (privatePem === null) {
+  const pair = generateKeyPairSync('rsa', { modulusLength: 3072, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+  await writeFile(servicePrivate, pair.privateKey, { flag: 'wx', mode: 0o600 });
+  await writeFile(servicePublic, pair.publicKey, { flag: 'wx', mode: 0o644 });
+  privatePem = pair.privateKey; publicPem = pair.publicKey;
+}
+if (createPublicKey(privatePem).export({ type: 'spki', format: 'pem' }) !== publicPem) throw new Error('Service identity key mismatch; refusing rotation');
 const topology = JSON.parse(await readFile(path.join(root, 'infra/compose/topology.json'), 'utf8'));
 const users = [];
 for (const name of ['checking', 'results', 'appeals', 'local-admin']) {
