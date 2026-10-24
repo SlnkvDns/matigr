@@ -28,12 +28,7 @@ public static class CheckingTransport
             Password = configuration["Broker:Password"] ?? throw new InvalidOperationException("Broker password required."),
             VirtualHost = configuration["Broker:VirtualHost"] ?? "matigr", AutomaticRecoveryEnabled = false,
             RequestedConnectionTimeout = TimeSpan.FromSeconds(5) });
-        services.AddScoped<IInboundHandler, PendingRecheckHandler>(); services.AddHostedService<TransportWorker>();
+        services.AddScoped<IInboundHandler, Storage.RecheckRequests>(); services.AddHostedService<TransportWorker>();
         return services;
-    }
-    private sealed class PendingRecheckHandler : IInboundHandler
-    {
-        public void Validate(JsonElement envelope) { }
-        public Task<InboundResult> HandleAsync(JsonElement envelope, CancellationToken ct) => Task.FromResult(new InboundResult(false, "RecheckHandlerNotImplemented"));
     }
 }
