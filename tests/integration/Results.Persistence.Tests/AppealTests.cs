@@ -27,6 +27,7 @@ public partial class StorageTests
         var applied = await work.AppealAsync(e, message, "appeal"); Assert.Equal("Applied", applied.Status);
         using var envelope = JsonDocument.Parse(applied.Response);
         new WireSchema(typeof(ResultsTransport).Assembly, "result-evaluation-applied.v1.schema.json").Validate(envelope.RootElement);
+        new WireSchema(typeof(StorageTests).Assembly, "Appeals.result-evaluation-applied.v1.schema.json").Validate(envelope.RootElement);
         var p = envelope.RootElement.GetProperty("payload"); Assert.Equal(changed, p.GetProperty("changed").GetBoolean());
         Assert.Equal(before.PublicationId.ToString("D"), p.GetProperty("basePublicationId").GetString());
         Assert.Equal(changed ? "2" : "1", p.GetProperty("resultVersion").GetString());
@@ -51,6 +52,7 @@ public partial class StorageTests
         await using var db = fixture.Open(); var r = await new ApplyEvaluation(db).AppealAsync(e, Guid.NewGuid(), "bad");
         Assert.Equal("Rejected", r.Status); using var json = JsonDocument.Parse(r.Response);
         new WireSchema(typeof(ResultsTransport).Assembly, "result-evaluation-rejected.v1.schema.json").Validate(json.RootElement);
+        new WireSchema(typeof(StorageTests).Assembly, "Appeals.result-evaluation-rejected.v1.schema.json").Validate(json.RootElement);
         Assert.Equal(10, (await db.Results.SingleAsync(x => x.TournamentId == e.Key.TournamentId)).Score);
         Assert.Equal(1, (await db.Snapshots.SingleAsync(x => x.TournamentId == e.Key.TournamentId)).Version);
     }

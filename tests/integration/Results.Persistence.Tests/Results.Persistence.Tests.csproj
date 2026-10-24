@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup><IsTestProject>true</IsTestProject><IsPackable>false</IsPackable></PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../../contracts/events/appeals/consumers/result-evaluation-*.schema.json" LogicalName="Matigr.Schemas.Appeals.%(Filename)%(Extension)" />
     <ProjectReference Include="../../../src/backend/services/Results/Results.Api/Results.Api.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
     <ProjectReference Include="../../../src/backend/services/Results/Results.Infrastructure/Results.Infrastructure.csproj" />
