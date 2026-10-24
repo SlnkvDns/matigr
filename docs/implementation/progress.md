@@ -157,4 +157,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-IT-05 (24 октября 2026): 29 Appeals PostgreSQL tests прошли. Новые два test cases детерминированно удерживают фактический FOR UPDATE submission_windows после выполнения SQL и запускают конкурента до release: Submit-first даёт 201, End-first даёт WindowClosed без квоты. Оба завершают Closed; successful Submit/end replay сохраняются после конца. Scope organizer и bootstrap INSERT-on-absence проверены прежними HTTP/PG gates; ReceivedAt не обходит row-lock boundary T05.
 
-Выполнено **70 из 82**, осталось **12**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-INT-04 (24 октября 2026): Новый check-appeals-contracts.mjs независимо проверил 8 actual outbox envelopes трёх сервисов (request/assignment/completed/no-op и changed Applied) по producer/consumer schemas; schema99/private capability отвергнуты. check-runtime-contracts.mjs подтвердил 2 Results receipts и 2 Completed. HTTP Submit/claim/ETag/runtime owner проверены живым UI/предыдущими API gates; selected и immutable basis/two publications проходят schema и process correlation.
+
+Выполнено **71 из 82**, осталось **11**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
