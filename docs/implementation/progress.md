@@ -159,4 +159,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-INT-04 (24 октября 2026): Новый check-appeals-contracts.mjs независимо проверил 8 actual outbox envelopes трёх сервисов (request/assignment/completed/no-op и changed Applied) по producer/consumer schemas; schema99/private capability отвергнуты. check-runtime-contracts.mjs подтвердил 2 Results receipts и 2 Completed. HTTP Submit/claim/ETag/runtime owner проверены живым UI/предыдущими API gates; selected и immutable basis/two publications проходят schema и process correlation.
 
-Выполнено **71 из 82**, осталось **11**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-IT-03 (24 октября 2026): Реальный RabbitMQ/три сервиса: no-op и changed закрываются по Applied. check-appeals-reordering.mjs удержал все настоящие Assigned/Completed при остановленном Appeals, доставил sufficient Applied первым, затем вернул факты и новые messageId-дубли: Closed/version не изменились. Checking down/restart сохранил один request/Check. Busy race/manual fresh request/stale Busy подтверждены check-appeals-assignment.mjs; Rejected/CAS и ранний rejected проверены 27 Results и 29 Appeals PG tests. Доменная permutation matrix 69 tests успешна.
+
+Выполнено **72 из 82**, осталось **10**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
