@@ -169,4 +169,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-IT-04 (24 октября 2026): 31 Appeals PG/настоящих Rabbit tests прошли: два новых worker barriers до commit и после commit до ack; unacked redelivery после нового host даёт один inbox/Closed history/attempt. Live check-appeal-publication-crash.mjs SIGKILL Results после фактического confirm до Sent восстановил прежний receipt/message/publication; Checking down после 202 и Appeals restart/ранний receipt не создали request/Check повторно. Broker down/readiness/poison/audited redrive прошли в APL-INT-07; SQL rollback admission/claim/application покрыт соседними integration gates. Данные и secrets сохранены.
 
-Выполнено **76 из 82**, осталось **6**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка RES-E2E-03 (24 октября 2026): В V4 visitor ушёл на about:blank до обновления и вернулся после SIGKILL/restart Results, пропустив invalidation: GET восстановил итоговую таблицу 1,1,2. Реальные Completed дубли/новые messageId не меняют публикацию/snapshot; schema/public reads успешны после broker restart предыдущего gate. Snapshot/transaction согласованность подтверждена reader/writer PG barrier; 10 local GET smoke p50 10.7ms max55.3ms записаны в tests/e2e/v4.md с явным ограничением Q10, без придуманного SLO.
+
+Выполнено **77 из 82**, осталось **5**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
