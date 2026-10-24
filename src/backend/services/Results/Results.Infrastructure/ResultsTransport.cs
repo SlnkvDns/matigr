@@ -54,10 +54,11 @@ internal sealed class ResultMessageHandler(IApplyEvaluation apply) : IInboundHan
     {
         var evaluation = Read(envelope);
         // The schema and kind-specific routing are checked by the worker; no browser or material/scoring fields are trusted.
-        if (evaluation.Kind == EvaluationKind.Appeal) return new(false, "AppealHandlerNotImplemented");
         try
         {
-            var result = await apply.InitialAsync(evaluation, envelope.GetProperty("messageId").GetGuid(), envelope.GetProperty("correlationId").GetString()!, ct);
+            var message = envelope.GetProperty("messageId").GetGuid(); var correlation = envelope.GetProperty("correlationId").GetString()!;
+            var result = evaluation.Kind == EvaluationKind.Initial ? await apply.InitialAsync(evaluation, message, correlation, ct)
+                : await apply.AppealAsync(evaluation, message, correlation, ct);
             return new(result.Status is "Applied" or "Rejected", "ScoringDependencyUnavailable");
         }
         catch (EvaluationIdentityConflictException) { throw new InvalidMessageException("EvaluationIdentityConflict"); }

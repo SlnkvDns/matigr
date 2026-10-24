@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Matigr.Results.Infrastructure;
 
-internal sealed class ApplyEvaluation(ResultsDbContext db) : IApplyEvaluation
+internal sealed partial class ApplyEvaluation(ResultsDbContext db) : IApplyEvaluation
 {
     private const string Consumer = "Results.CheckCompleted.v1";
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);

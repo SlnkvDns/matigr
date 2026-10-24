@@ -6,4 +6,5 @@ public sealed record EvaluationProcessing(string Status, string Response);
 public interface IApplyEvaluation
 {
     Task<EvaluationProcessing> InitialAsync(Evaluation evaluation, Guid messageId, string correlationId, CancellationToken ct = default);
+    Task<EvaluationProcessing> AppealAsync(Evaluation evaluation, Guid messageId, string correlationId, CancellationToken ct = default);
 }
