@@ -9,6 +9,18 @@ import { credential, deferred, jsonResponse } from '../../shared/auth/test-suppo
 
 const view = () => ({ appealId: 'a', tournamentId: 't', teamId: 'team', taskId: 'task', state: 'Registered', version: '1',
   resultId: 'r', resultVersion: '1', baseCheckId: 'check', basePublicationId: 'p', baseOutcome: 'Correct', submittedAt: '2026-10-24T00:00:00Z' });
+it('protected refresh preserves a newer Closed publication when the server later returns an older process snapshot', async () => {
+  let old = false;
+  setup(vi.fn(async url => {
+    const d = old ? view() : { ...view(), state: 'Closed', version: '9007199254740993', finalPublicationId: 'final-publication' };
+    return jsonResponse(String(url).includes('/me?') ? { tournamentId: 't', items: [{ ...summary(), state: d.state, version: d.version }] } : d);
+  }));
+  await screen.findByText('Итоговая публикация: final-publication'); old = true;
+  fireEvent.click(screen.getByText('Обновить мои апелляции'));
+  await waitFor(() => expect(screen.getByText('Обновить мои апелляции')).toBeEnabled());
+  expect(screen.getByText('Итоговая публикация: final-publication')).toBeInTheDocument();
+  expect(screen.queryByRole('button', { name: 'Подать апелляцию' })).toBeNull();
+});
 function summary(v = view()) { const { resultId: _r, resultVersion: _v, baseCheckId: _c, basePublicationId: _p, baseOutcome: _o, ...s } = v; return s; }
 function setup(fetcher: typeof fetch, version = '1') {
   vi.stubGlobal('fetch', fetcher);

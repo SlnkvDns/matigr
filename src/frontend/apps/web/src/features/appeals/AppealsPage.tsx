@@ -20,6 +20,8 @@ function TeamAppeals({ tournament }: { tournament: string }) {
   const { session, snapshot } = useSession(); const team = snapshot.profile!.teamId!;
   const [query] = useSearchParams(); const resultId = query.get('resultId') ?? ''; const version = query.get('expectedResultVersion') ?? '';
   const [items, setItems] = useState<AppealSummary[]>([]); const [existing, setExisting] = useState<AppealView>();
+  const [details, setDetails] = useState<AppealView[]>([]);
+  const latest = useRef(new Map<string, AppealView>());
   const [error, setError] = useState<unknown>(); const [loading, setLoading] = useState(false); const [sending, setSending] = useState(false);
   const [ready, setReady] = useState(false); const [retry, setRetry] = useState(false); const [notice, setNotice] = useState(''); const [blocked, setBlocked] = useState(false);
   const sequence = useRef(0); const reads = useRef<AbortController | undefined>(undefined); const action = useRef<AbortController | undefined>(undefined);
@@ -34,14 +36,21 @@ function TeamAppeals({ tournament }: { tournament: string }) {
       const details = await Promise.all(list.map(async item => readView((await client.get<unknown>(`/${encodeURIComponent(item.appealId)}`, { signal: abort.signal })).data, tournament)));
       if (generation !== sequence.current || abort.signal.aborted) return;
       if (details.some(d => d.teamId !== team)) throw new ApiProtocolError();
-      setItems(list); setExisting(details.find(d => d.resultId === resultId)); setReady(true);
+      const stable = details.map(d => { const old = latest.current.get(d.appealId); const value = old && BigInt(old.version) > BigInt(d.version) ? old : d; latest.current.set(d.appealId, value); return value; });
+      setItems(list.map(i => { const d = latest.current.get(i.appealId)!; return { ...i, state: d.state, version: d.version }; })); setDetails(stable); setExisting(stable.find(d => d.resultId === resultId)); setReady(true);
     } catch (e) { if (generation === sequence.current && !abort.signal.aborted) setError(e); }
     finally { if (generation === sequence.current && !abort.signal.aborted) setLoading(false); }
   }
   useEffect(() => {
-    setExisting(undefined); setItems([]); setNotice(''); setBlocked(false); setRetry(false); setSending(false); pending.current = undefined; inFlight.current = false;
+    setExisting(undefined); setItems([]); setDetails([]); latest.current.clear(); setNotice(''); setBlocked(false); setRetry(false); setSending(false); pending.current = undefined; inFlight.current = false;
     if (tournament) void load();
     return () => { ++sequence.current; reads.current?.abort(); action.current?.abort(); };
+  }, [tournament, resultId, version]);
+  useEffect(() => {
+    const refresh = () => { if (!inFlight.current) void load(true); };
+    window.addEventListener('focus', refresh); window.addEventListener('online', refresh);
+    const timer = window.setInterval(refresh, 5000);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); };
   }, [tournament, resultId, version]);
   async function submit() {
     if (inFlight.current || !ready || existing || blocked || !resultId || !exactVersion(version)) return;
@@ -71,7 +80,11 @@ function TeamAppeals({ tournament }: { tournament: string }) {
           <button disabled={!ready || loading || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button></>}
     </section> : <p>Выберите опубликованный результат на странице команды.</p>}
     <section aria-label="Мои апелляции"><h2>Мои апелляции</h2>{ready && items.length === 0 && <p>Апелляций пока нет.</p>}
-      <ul>{items.map(item => <li key={item.appealId}>Задача {item.taskId}: {states[item.state]}</li>)}</ul>
+      <ul>{items.map(item => <li key={item.appealId}>Задача {item.taskId}: {states[item.state]}
+        {details.find(d => d.appealId === item.appealId)?.finalPublicationId && <p>Итоговая публикация: {details.find(d => d.appealId === item.appealId)!.finalPublicationId}</p>}
+        {item.state === 'AwaitingResultApplication' && <p>Вердикт получен. Ожидаем подтверждения публикации Results.</p>}
+        {item.state === 'NeedsResolution' && <p>Результат не применён. Исходное основание сохранено; требуется разбор конфликта.</p>}
+      </li>)}</ul>
     </section>
   </>;
 }

@@ -43,6 +43,13 @@ export function JuryAppeals({ tournament }: { tournament: string }) {
     if (tournament) void loadQueue();
     return () => { ++queueSequence.current; ++detailSequence.current; queueAbort.current?.abort(); detailAbort.current?.abort(); commandAbort.current?.abort(); };
   }, [tournament]);
+  useEffect(() => {
+    if (!detail) return;
+    const refresh = () => { if (!inFlight.current) void loadDetail(detail.view.appealId); };
+    window.addEventListener('focus', refresh); window.addEventListener('online', refresh);
+    const timer = window.setInterval(refresh, 5000);
+    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); };
+  }, [detail?.view.appealId, tournament]);
   async function claim(item: { appealId: string; version: string }) {
     if (inFlight.current) return; inFlight.current = true; setSending(true); setError(undefined);
     const operation = pending.current ?? { ...item, key: crypto.randomUUID() }; pending.current = operation;
@@ -69,6 +76,9 @@ export function JuryAppeals({ tournament }: { tournament: string }) {
         <button disabled={sending || retry} onClick={() => void claim(item)}>Выбрать апелляцию</button></li>)}</ul>
     </section>
     {detail && <section aria-label="Выбранная апелляция"><h2>Выбранная апелляция</h2><p>{states[detail.view.state]}</p>
+      {detail.view.state === 'AwaitingResultApplication' && <p>Вердикт получен. Ожидаем подтверждения публикации Results.</p>}
+      {detail.view.state === 'Closed' && <p>Результат опубликован. Итоговая публикация: {detail.view.finalPublicationId}</p>}
+      {detail.view.state === 'NeedsResolution' && <p>Результат не применён. Требуется разбор конфликта без повторной подачи.</p>}
       <button disabled={sending} onClick={() => void loadDetail(detail.view.appealId)}>Обновить выбранную апелляцию</button>
       {detail.view.state === 'AcceptedAwaitingRecheck' && <p>Выбор сохранён. Checking ещё не подтвердил назначение.</p>}
       {detail.view.state === 'Registered' && <><p>Апелляция снова ожидает ручного выбора. Повтор выполняется только вашим действием.</p>
