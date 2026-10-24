@@ -66,7 +66,7 @@ internal sealed partial class AppealProcess(AppealsDbContext db) : IInboundHandl
                         Id(p, "assignmentId"), Id(p, "reviewerId"), escalation), escalation.HasValue ? AppealState.AwaitingSeniorReview : AppealState.RecheckPending);
                 } else {
                     next = ApplyFinal(name, p, envelope, before, out var handled);
-                    if (!handled) return new(false, "SeniorProgressHandlerPending");
+                    if (!handled) next = ApplySenior(name, p, envelope, before);
                 }
             } catch (AppealRuleException e) { throw new InvalidMessageException(e.Message); }
         }
