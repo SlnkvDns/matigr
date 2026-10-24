@@ -66,6 +66,12 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
             || (fact.EscalationId is null && fact.ReviewerId is { } reviewer && reviewer != fact.SelectedReviewerId)
             || (Progress?.EscalationId is { } escalation && fact.EscalationId != escalation && fact.CheckVersion > Progress.CheckVersion))
             throw new AppealRuleException("RecheckLineageConflict");
+        var finalOrigin = Receipt?.Origin ?? Rejection?.Origin; var finalEscalation = Receipt?.EscalationId ?? Rejection?.EscalationId;
+        var finalAssignment = Receipt?.AssignmentId ?? Rejection?.AssignmentId;
+        if (fact.EscalationId is { } actualEscalation && finalOrigin is not null
+            && (finalOrigin != DecisionOrigin.SeniorEscalation || finalEscalation != actualEscalation)) throw new AppealRuleException("RecheckLineageConflict");
+        if (finalOrigin == DecisionOrigin.AppealReview && fact.AssignmentId is { } actualAssignment && actualAssignment != finalAssignment)
+            throw new AppealRuleException("RecheckLineageConflict");
     }
     public Appeal Observe(ReviewProgress fact, AppealState target)
     {
