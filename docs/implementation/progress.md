@@ -173,4 +173,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-INT-08 (24 октября 2026): check-appeals-contracts.mjs --senior проверил 14 реальных outbox envelopes и три senior facts Assigned/Completed/Applied. Producer и независимые consumer schemas одинаково требуют assignmentKind/decisionOrigin, selected/actual, escalationId; schema99/private payload/отсутствующий escalation отвергнуты. Настоящий достаточный senior Applied был принят раньше эскалации/назначения; потом late facts не меняют Closed. Domain/PG отрицательная lineage matrix успешна.
 
-Выполнено **78 из 82**, осталось **4**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-IT-06 (24 октября 2026): Три реальных сервиса/RabbitMQ: выбранный jury-a отказался и освободился, тот же Check взят senior. Checking restart сохранил assignment, прежнему selected материал403. Appeals был остановлен до отказа; actual senior Applied закрыл раньше удержанных Escalated/SeniorAssigned/Completed. Все факты возвращены, semantic дубли не регрессируют Closed/version. check-senior-appeal.mjs подтвердил неизменные Appeal/Check/request/selected, actual senior/assignment/escalation, два исторических assignment и одну попытку/квоту.
+
+Выполнено **79 из 82**, осталось **3**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
