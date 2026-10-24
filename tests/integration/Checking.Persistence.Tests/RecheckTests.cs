@@ -4,11 +4,48 @@ using Matigr.Checking.Domain;
 using Matigr.Checking.Infrastructure.Storage;
 using Matigr.Transport;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 
 namespace Checking.Persistence.Tests;
 
 public partial class StorageTests
 {
+    [Fact]
+    public async Task Concurrent_ordinary_claim_and_personal_recheck_have_exactly_one_active_assignment()
+    {
+        var request = await RecheckSeed(); await Seed(request.TournamentId);
+        var start = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        async Task<int> Ordinary() {
+            await start.Task; await using var db = fixture.Open();
+            return (await Work(db).TakeNextAsync(Actor(request.RequestedReviewerId, request.TournamentId), request.TournamentId, "general", "race", "race", default)).Status;
+        }
+        async Task Recheck() { await start.Task; await using var db = fixture.Open(); await Rechecks(db).HandleAsync(request, Guid.NewGuid(), "race"); }
+        var ordinary = Ordinary(); var recheck = Recheck(); start.SetResult(); await Task.WhenAll(ordinary, recheck);
+        await using var verify = fixture.Open();
+        Assert.Single(await verify.Assignments.Where(x => x.ReviewerId == request.RequestedReviewerId && x.State == AssignmentState.Active).ToListAsync());
+        var receipt = await verify.RecheckRequestReceipts.SingleAsync(x => x.RequestId == request.RequestId);
+        var status = await ordinary;
+        Assert.Equal(status == 200 ? "Rejected" : "Assigned", receipt.Outcome);
+        Assert.Equal(status == 200 ? 0 : 1, await verify.Checks.CountAsync(x => x.AppealId == request.AppealId));
+    }
+    private sealed class FailRecheckCommit : SaveChangesInterceptor
+    {
+        public override ValueTask<int> SavedChangesAsync(SaveChangesCompletedEventData data, int result, CancellationToken ct = default) =>
+            throw new InvalidOperationException("Recheck fault after SQL before commit");
+    }
+    [Fact]
+    public async Task Recheck_creation_fault_rolls_back_check_assignment_receipt_inbox_outbox_and_same_request_retries()
+    {
+        var request = await RecheckSeed(); var message = Guid.NewGuid();
+        var options = new DbContextOptionsBuilder<CheckingDbContext>().UseNpgsql(fixture.ConnectionString).AddInterceptors(new FailRecheckCommit()).Options;
+        await using (var broken = new CheckingDbContext(options)) await Assert.ThrowsAsync<InvalidOperationException>(() => Rechecks(broken).HandleAsync(request, message, "fault"));
+        await using var db = fixture.Open();
+        Assert.False(await db.Checks.AnyAsync(x => x.AppealId == request.AppealId));
+        Assert.False(await db.Assignments.AnyAsync(x => x.ReviewerId == request.RequestedReviewerId && x.State == AssignmentState.Active));
+        Assert.False(await db.RecheckRequestReceipts.AnyAsync(x => x.RequestId == request.RequestId));
+        Assert.False(await db.Inbox.AnyAsync(x => x.MessageId == message)); Assert.False(await db.Outbox.AnyAsync(x => x.CorrelationId == request.AppealId));
+        Assert.True((await Rechecks(db).HandleAsync(request, message, "retry")).Applied);
+    }
     private async Task<RecheckRequest> RecheckSeed()
     {
         var seed = await Seed(); var reviewer = Guid.NewGuid(); await SeedScope(reviewer, seed.TournamentId);
