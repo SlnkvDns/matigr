@@ -175,4 +175,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-IT-06 (24 октября 2026): Три реальных сервиса/RabbitMQ: выбранный jury-a отказался и освободился, тот же Check взят senior. Checking restart сохранил assignment, прежнему selected материал403. Appeals был остановлен до отказа; actual senior Applied закрыл раньше удержанных Escalated/SeniorAssigned/Completed. Все факты возвращены, semantic дубли не регрессируют Closed/version. check-senior-appeal.mjs подтвердил неизменные Appeal/Check/request/selected, actual senior/assignment/escalation, два исторических assignment и одну попытку/квоту.
 
-Выполнено **79 из 82**, осталось **3**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-E2E-04 (24 октября 2026): Браузерный V5 прошёл Team Submit→ручной selected→refuse/свобода→тот же Check в senior очереди→окончательный Correct→Results→Closed. Delivery order Applied прежде Escalated/Assigned и late duplicates проверен настоящим брокером; immutable selected и actual senior lineage сохранены. Доказательства tests/e2e/v5.md, локальный скриншот Closed; права старого assignment не восстановились.
+
+Выполнено **80 из 82**, осталось **2**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
