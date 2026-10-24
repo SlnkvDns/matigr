@@ -151,4 +151,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-FE-03 (24 октября 2026): Защищённое чтение деталей обновляется вручную, при focus/online и техническим polling без push-протокола. Closed показывает finalPublicationId, Completed ожидает Results, NeedsResolution не предлагает rebasing. Монотонное BigInt сравнение не даёт старому ответу откатить статус; subject boundary отменяет и очищает private state. Typecheck и 110 frontend tests прошли, новый case сохраняет Closed >2^53 после старого Registered.
 
-Выполнено **67 из 82**, осталось **15**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка RES-IT-05 (24 октября 2026): 27 Results PostgreSQL/HTTP/реальных broker tests прошли. Дополнены no-op replay до CAS после следующей коррекции, новый stale evaluation отвергается, outcome меняется при равных нулевых баллах и создаёт публикацию, late Initial не откатывает исправление. Ранее проверенные material/publication conflict, senior wire lineage, SQL-before-commit receipt/outbox rollback и broker ack/confirm recovery остаются в общем gate. Нулевая цена используется только в изолированном тесте; fixture 10/20 неизменен.
+
+Выполнено **68 из 82**, осталось **14**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.

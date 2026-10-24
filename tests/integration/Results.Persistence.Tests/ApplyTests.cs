@@ -7,14 +7,14 @@ namespace Results.Persistence.Tests;
 
 public partial class StorageTests
 {
-    private async Task<Evaluation> NewEvaluation(Outcome outcome = Outcome.Correct)
+    private async Task<Evaluation> NewEvaluation(Outcome outcome = Outcome.Correct, decimal points = 10)
     {
         await using var db = fixture.Open();
         var t = Guid.NewGuid(); var team = Guid.NewGuid(); var task = Guid.NewGuid();
         db.Snapshots.Add(new() { TournamentId = t, FixtureVersion = 1, ManifestHash = "test", UpdatedAt = DateTimeOffset.UtcNow });
         db.Teams.Add(new() { TournamentId = t, TeamId = team, Name = "Test" });
         db.Tasks.Add(new() { TournamentId = t, TaskId = task, Name = "Task", Order = 1 });
-        db.Rules.Add(new() { TournamentId = t, TaskId = task, RuleVersion = 1, Points = 10, ManifestHash = "test" });
+        db.Rules.Add(new() { TournamentId = t, TaskId = task, RuleVersion = 1, Points = points, ManifestHash = "test" });
         await db.SaveChangesAsync();
         return new(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), new(t, team, task), EvaluationKind.Initial, outcome,
             DecisionOrigin.OrdinaryReview, Guid.NewGuid(), Guid.NewGuid(), 0, 1, DateTimeOffset.UtcNow);
