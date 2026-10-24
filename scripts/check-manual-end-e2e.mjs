@@ -27,5 +27,13 @@ if(process.argv[2]==='prepare'){
  assert.equal(await sql('appeals',`SELECT count(*) FROM selection_attempts WHERE appeal_id=${q(o.reply.appealId)}`),'2');
  assert.equal(await sql('checking',`SELECT count(*) FROM checks WHERE appeal_id=${q(o.reply.appealId)}`),'1');
  assert.equal(await sql('appeals',`SELECT count(*) FROM appeals WHERE tournament_id=${q(t)} AND team_id=${q(m.teams[2].teamId)} AND task_id=${q(m.tasks[1].taskId)}`),'0');
+ const ended=await sql('appeals',`SELECT ended_at FROM submission_windows WHERE tournament_id=${q(t)}`);
+ const primary=JSON.parse(await sql('results',`SELECT publication::text FROM team_task_results WHERE result_id=${q(late)}`));
+ assert.ok(Date.parse(primary.publishedAt)>Date.parse(ended));
+ const prepared=m.solutions.find(s=>s.teamId===m.teams[2].teamId&&s.taskId===m.tasks[1].taskId);
+ assert.equal(await sql('checking',`SELECT count(*) FROM checks WHERE solution_id=${q(prepared.solutionId)} AND kind='Initial' AND state='Completed' AND created_at<${q(ended)}::timestamptz AND completed_at>${q(ended)}::timestamptz`),'1');
+ const final=JSON.parse(await sql('appeals',`SELECT snapshot::text FROM appeals WHERE appeal_id=${q(o.reply.appealId)}`));
+ assert.equal(final.receipt.origin,'SeniorEscalation');assert.notEqual(final.receipt.reviewerId,final.receipt.selectedReviewerId);assert.ok(final.receipt.escalationId);
+ assert.equal(final.receipt.requestId,final.attempt.requestId);
  console.log('After end: old successful Submit/end replay unchanged even after Closed; late new Submit denied; busy retry two attempts/one Check; restart bootstrap keeps Closed: OK');
 }
