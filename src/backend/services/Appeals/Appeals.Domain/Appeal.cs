@@ -89,7 +89,8 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
             || receipt.PublicationId == Guid.Empty || !Enum.IsDefined(receipt.Outcome)
             || (receipt.Origin == DecisionOrigin.AppealReview ? receipt.ReviewerId != receipt.SelectedReviewerId || receipt.EscalationId is not null
                 : receipt.Origin != DecisionOrigin.SeniorEscalation || receipt.EscalationId is null || receipt.EscalationId == Guid.Empty)
-            || (Progress is not null && (Progress.CheckId != receipt.EvaluationId || (Progress.EscalationId is { } escalation && escalation != receipt.EscalationId))))
+            || (Progress is not null && Progress.CheckId != receipt.EvaluationId)
+            || !KnownLineage(receipt.AssignmentId, receipt.ReviewerId, receipt.Origin, receipt.EscalationId))
             throw new AppealRuleException("ResultReceiptCorrelationConflict");
         if (receipt.Changed ? receipt.ResultVersion != checked(Basis.ResultVersion + 1) || receipt.PublicationId == Basis.PublicationId || receipt.Outcome == Basis.Outcome
             : receipt.ResultVersion != Basis.ResultVersion || receipt.PublicationId != Basis.PublicationId || receipt.Outcome != Basis.Outcome)
@@ -110,7 +111,8 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
             || new[] { rejection.EvaluationId, rejection.ReviewerId, rejection.AssignmentId }.Contains(Guid.Empty) || string.IsNullOrWhiteSpace(rejection.ReasonCode)
             || (rejection.Origin == DecisionOrigin.AppealReview ? rejection.ReviewerId != rejection.SelectedReviewerId || rejection.EscalationId is not null
                 : rejection.Origin != DecisionOrigin.SeniorEscalation || rejection.EscalationId is null || rejection.EscalationId == Guid.Empty)
-            || (Progress is not null && Progress.CheckId != rejection.EvaluationId)) throw new AppealRuleException("ResultReceiptCorrelationConflict");
+            || (Progress is not null && Progress.CheckId != rejection.EvaluationId)
+            || !KnownLineage(rejection.AssignmentId, rejection.ReviewerId, rejection.Origin, rejection.EscalationId)) throw new AppealRuleException("ResultReceiptCorrelationConflict");
         if (Terminal) {
             if (Rejection == rejection) return this;
             throw new AppealRuleException("ConflictingTerminalReceipt");
@@ -118,6 +120,16 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
         if (State == AppealState.Registered) throw new AppealRuleException("InvalidResultReceiptState");
         return this with { State = AppealState.NeedsResolution, Version = checked(Version + 1), Conflict = rejection.ReasonCode,
             Rejection = rejection, Attempt = Attempt with { State = AttemptState.Assigned } };
+    }
+    private bool KnownLineage(Guid assignment, Guid reviewer, DecisionOrigin origin, Guid? escalation)
+    {
+        if (Progress is null) return true;
+        if (Progress.EscalationId is { } known && known != escalation) return false;
+        if (State == AppealState.AwaitingResultApplication && Progress.EscalationId != escalation) return false;
+        // A sufficient senior receipt may precede escalation; a completed or actual senior assignment is already authoritative.
+        if (State == AppealState.AwaitingResultApplication || Progress.EscalationId is not null || origin == DecisionOrigin.AppealReview)
+            return (Progress.AssignmentId is null || Progress.AssignmentId == assignment) && (Progress.ReviewerId is null || Progress.ReviewerId == reviewer);
+        return true;
     }
 }
 
