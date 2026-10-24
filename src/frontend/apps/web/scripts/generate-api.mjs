@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import openapiTS, { astToString } from 'openapi-typescript';
 
-for (const service of ['checking', 'results']) {
+for (const service of ['checking', 'results', 'appeals']) {
 const input = new URL(`../../../../../contracts/http/${service}/openapi.json`, import.meta.url);
 const output = new URL(`../src/shared/api/generated/${service}.d.ts`, import.meta.url);
 const ast = await openapiTS(input);

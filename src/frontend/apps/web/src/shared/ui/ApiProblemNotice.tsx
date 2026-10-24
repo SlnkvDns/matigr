@@ -7,6 +7,11 @@ function message(error: unknown): string {
       case 'ReviewerBusy': return 'У вас уже есть незавершённая проверка.';
       case 'CheckVersionConflict': return 'Состояние проверки изменилось. Обновите данные.';
       case 'IdempotencyConflict': return 'Этот запрос уже использован для другого действия.';
+      case 'AlreadyAppealed': return 'Апелляция по этой задаче уже подана.';
+      case 'WindowClosed': return 'Турнир завершён. Новые апелляции больше не принимаются.';
+      case 'BaseNotAppealable': return 'Итог старшего после передачи является окончательным.';
+      case 'ResultVersionConflict': return 'Опубликованный результат изменился. Откройте его заново.';
+      case 'AppealVersionConflict': return 'Состояние апелляции изменилось. Обновите данные.';
     }
     if (error.status === 401) return 'Для этого действия нужен вход.';
     if (error.status === 403) return 'У вас нет доступа к этому действию.';

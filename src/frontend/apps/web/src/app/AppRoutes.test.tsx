@@ -39,7 +39,7 @@ describe('single application navigation', () => {
   ])('supports direct navigation to %s without fake results, controls or assignments', (path, heading) => {
     renderApp(path);
     expect(screen.getByRole('heading', { level: 1, name: heading })).toBeInTheDocument();
-    expect(screen.getByText(path === '/checking' ? 'Для проверки войдите как член жюри.' : path === '/results' ? 'Таблица доступна всем, без входа.' : 'Раздел готовится')).toBeInTheDocument();
+    expect(screen.getByText(path === '/checking' ? 'Для проверки войдите как член жюри.' : path === '/results' ? 'Таблица доступна всем, без входа.' : 'Для подачи апелляции войдите как команда.')).toBeInTheDocument();
     expect(screen.queryByRole('table')).not.toBeInTheDocument();
     if (path !== '/results') {
       expect(screen.queryByRole('button')).not.toBeInTheDocument();
