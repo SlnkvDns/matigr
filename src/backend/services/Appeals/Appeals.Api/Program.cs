@@ -5,6 +5,7 @@ using Matigr.Appeals.Api;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAppealsInfrastructure(builder.Configuration);
+builder.Services.AddAppealSubmissions();
 var app = builder.Build();
 
 if (app.Environment.IsEnvironment("Local"))
@@ -20,6 +21,7 @@ if (app.Environment.IsEnvironment("Local"))
 
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapAppealCommands();
+app.MapAppealSubmissions();
 app.MapGet("/health/ready", async (IAppealsReadiness readiness, CancellationToken cancellationToken) =>
 {
     var state = await readiness.ProbeAsync(cancellationToken);
