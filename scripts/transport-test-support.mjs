@@ -10,7 +10,7 @@ export function compose(args) {
 }
 export const quote = value => `'${String(value).replaceAll("'", "''")}'`;
 export async function sql(service, query) {
-  assert.ok(['checking', 'results'].includes(service));
+  assert.ok(['checking', 'results', 'appeals'].includes(service));
   const password = (await readFile(new URL(`../.local/secrets/${service}_db_password`, import.meta.url), 'utf8')).trim();
   const r = spawnSync('docker', ['compose', '-p', project, '-f', 'infra/compose/compose.yaml', 'exec', '-T', `${service}-db`, 'sh', '-c',
     `read -r PGPASSWORD; export PGPASSWORD; exec psql -h 127.0.0.1 -U ${service}_app -d ${service}_db -At -v ON_ERROR_STOP=1`],
