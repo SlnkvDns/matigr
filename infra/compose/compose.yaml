@@ -130,6 +130,9 @@ services:
       ASPNETCORE_HTTP_PORTS: '8080'
       Fixtures__ManifestPath: /fixtures/manifest.json
       Results__BaseUrl: http://results-api:8080
+      Transport__Enabled: 'true'
+      Broker__Host: rabbitmq
+      Broker__Username: appeals
       ResultsServiceIdentity__Issuer: matigr-appeals-local
       ResultsServiceIdentity__Audience: matigr-results-internal
       ResultsServiceIdentity__PrivateKeyPath: /run/matigr-service/private.pem
@@ -138,7 +141,7 @@ services:
       Identity__PublicKeyPath: /run/secrets/dev_issuer_public
     volumes:
       - ../fixtures:/fixtures:ro
-    secrets: [appeals_db_password, appeals_results_private, dev_issuer_public]
+    secrets: [appeals_db_password, appeals_results_private, dev_issuer_public, appeals_broker_password]
     networks: [appeals-data, transport]
     ports: ['127.0.0.1:5103:8080']
     depends_on:
@@ -159,6 +162,7 @@ secrets:
   capability_protection_key: { file: ../../.local/secrets/capability-protection-key }
   appeals_results_private: { file: ../../.local/secrets/appeals-results-private.pem }
   appeals_results_public: { file: ../../.local/secrets/appeals-results-public.pem }
+  appeals_broker_password: { file: ../../.local/secrets/appeals_broker_password }
 networks:
   checking-data: { internal: true }
   results-data: { internal: true }

@@ -18,6 +18,7 @@ public static class AppealsInfrastructureRegistration
         services.AddScoped<AppealsFixtureWindowSeeder>();
         services.AddScoped<IManualEnd, ManualEnd>();
         services.AddScoped<IAppealWork, AppealWork>();
+        services.AddAppealsTransport(configuration);
         services.AddHttpClient<IResultsBasis, ResultsBasisClient>(http => {
             if (configuration["Results:BaseUrl"] is { } url) http.BaseAddress = new Uri(url);
             var timeout = configuration.GetValue<int?>("Results:TimeoutSeconds") ?? 5;

@@ -1,0 +1,7 @@
+# Appeals: собственные границы хранения и интеграции
+
+Appeals хранит permanent tuple quota, immutable admission/basis, selection attempts и историю в собственной БД. Registered создаётся без request; Claim атомарно сохраняет pending attempt/outbox и не означает назначение. Results basis читается подписанным service JWT до SQL-транзакции; dev-only manual end сериализуется с Submit на window row.
+
+APL-INT-03 использует linked technical transport sample без общих доменных сущностей. Два независимых worker читают `appeals.checking-facts.v1` и `appeals.result-receipts.v1`; общий durable outbox координируется lease в PostgreSQL. Inbox `Appeals.Process.v1` и canonical semantic hash защищают message identity; Appeal row lock сериализует Claim и входящие факты. Assigned подтверждает выбранного, подтверждённый ReviewerBusy возвращает тот же Appeal в Registered, старая attempt не снимает новую. Missing dependencies откладываются; неизвестный request/неверные связи изолируются. Timeout не меняет request или квоту.
+
+Первичный process manager пока принимает Assigned/Rejected; обработка Completed/Results receipts и senior progress принимается отдельными APL-INT-05/06. Readiness/операционная приёмка deferred/quarantine/redrive остаётся APL-INT-07. Все методы материал/баллы/назначение читают у соответствующего владельца; прямого доступа к чужой БД в runtime нет. `check-appeals-storage.mjs` использует отдельную tmpfs PostgreSQL, не рабочие volumes.

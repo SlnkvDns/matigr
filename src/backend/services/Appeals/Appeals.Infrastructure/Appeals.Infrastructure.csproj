@@ -1,6 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Compile Include="../../../transport/*.cs" Link="Transport/%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../../../contracts/events/appeals/*.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../../../contracts/events/appeals/consumers/*.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
+    <PackageReference Include="RabbitMQ.Client" />
     <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />

@@ -2,6 +2,7 @@ using Matigr.Appeals.Application;
 using Matigr.Appeals.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using Matigr.Appeals.Api;
+using Matigr.Transport;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddAppealsInfrastructure(builder.Configuration);
@@ -19,6 +20,7 @@ if (app.Environment.IsEnvironment("Local"))
         .EnsureOpenFixtureAsync(manifestPath, CancellationToken.None);
 }
 
+if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapAppealCommands();
 app.MapAppealSubmissions();
