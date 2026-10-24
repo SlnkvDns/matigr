@@ -4,6 +4,7 @@ import { expect, it, vi } from 'vitest';
 import { ResultsPage } from './ResultsPage';
 import { readStandings } from './standings';
 import { jsonResponse } from '../../shared/auth/test-support';
+import { SessionProvider } from '../../shared/auth/SessionContext';
 
 export const table = () => ({ tournamentId: 'tournament', snapshotVersion: '9007199254740993', tasks: [{ taskId: 'task', name: 'Задача' }],
   teams: [{ teamId: 'a', name: 'Альфа', cells: [{ status: 'Published', score: '10' }], total: '10', rank: 1 },
@@ -12,7 +13,7 @@ export const table = () => ({ tournamentId: 'tournament', snapshotVersion: '9007
 
 it('renders server scores, shared ranks and pending anonymously without authorizing appeals', async () => {
   const fetcher = vi.fn(async (_url: RequestInfo | URL, _init?: RequestInit) => jsonResponse(table())); vi.stubGlobal('fetch', fetcher);
-  render(<MemoryRouter initialEntries={['/results?tournamentId=tournament']}><ResultsPage /></MemoryRouter>);
+  render(<SessionProvider><MemoryRouter initialEntries={['/results?tournamentId=tournament']}><ResultsPage /></MemoryRouter></SessionProvider>);
   const grid = await screen.findByRole('table');
   expect(within(grid).getByRole('row', { name: /2 Гамма/ })).toHaveTextContent('—0');
   expect(within(grid).getAllByRole('row', { name: /^1 / })).toHaveLength(2);
@@ -23,12 +24,12 @@ it('renders server scores, shared ranks and pending anonymously without authoriz
 it('uses server totals/ranks even when they differ from a browser guess', async () => {
   const data = table(); data.teams[0]!.total = '9007199254740993'; data.teams[0]!.rank = 42;
   vi.stubGlobal('fetch', vi.fn(async () => jsonResponse(data)));
-  render(<MemoryRouter initialEntries={['/results?tournamentId=tournament']}><ResultsPage /></MemoryRouter>);
+  render(<SessionProvider><MemoryRouter initialEntries={['/results?tournamentId=tournament']}><ResultsPage /></MemoryRouter></SessionProvider>);
   expect(await screen.findByRole('row', { name: /42 Альфа/ })).toHaveTextContent('9007199254740993');
 });
 it('shows dependency failure and allows an explicit public reload', async () => {
   const fetcher = vi.fn().mockRejectedValueOnce(new TypeError('offline')).mockResolvedValueOnce(jsonResponse(table())); vi.stubGlobal('fetch', fetcher);
-  render(<MemoryRouter initialEntries={['/results?tournamentId=tournament']}><ResultsPage /></MemoryRouter>);
+  render(<SessionProvider><MemoryRouter initialEntries={['/results?tournamentId=tournament']}><ResultsPage /></MemoryRouter></SessionProvider>);
   await screen.findByRole('alert'); fireEvent.click(screen.getByText('Обновить таблицу')); await screen.findByRole('table');
 });
 it.each(['private', 'pendingScore', 'wrongCells', 'impreciseVersion'])('rejects invalid DTO: %s', variant => {

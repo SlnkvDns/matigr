@@ -4,6 +4,7 @@ import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
 import { StandingsController } from './StandingsController';
 import './results.css';
+import { TeamResults } from './TeamResults';
 
 export function ResultsPage() {
   const [query, setQuery] = useSearchParams();
@@ -34,6 +35,7 @@ export function ResultsPage() {
         </table>
       </div>}
       {snapshot && <p>«—» означает, что результат ещё ожидается. Равные суммы делят место.</p>}
+      <TeamResults tournament={tournament} snapshotVersion={snapshot?.snapshotVersion} />
     </Page>
   );
 }
