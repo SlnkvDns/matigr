@@ -167,4 +167,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-E2E-03 (24 октября 2026): Полный browser changed flow Беты завершился Closed по новой publicationId, исходные basePublicationId/baseCheck/version сохранены. При переходе из собственного результата version2 UI показывает прежнюю Closed без формы; новый HTTP key возвращает AlreadyAppealed. Реальные поздние Assigned/Completed и их semantic дубли не меняют Closed. Доказательства в tests/e2e/v4.md.
 
-Выполнено **75 из 82**, осталось **7**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-IT-04 (24 октября 2026): 31 Appeals PG/настоящих Rabbit tests прошли: два новых worker barriers до commit и после commit до ack; unacked redelivery после нового host даёт один inbox/Closed history/attempt. Live check-appeal-publication-crash.mjs SIGKILL Results после фактического confirm до Sent восстановил прежний receipt/message/publication; Checking down после 202 и Appeals restart/ранний receipt не создали request/Check повторно. Broker down/readiness/poison/audited redrive прошли в APL-INT-07; SQL rollback admission/claim/application покрыт соседними integration gates. Данные и secrets сохранены.
+
+Выполнено **76 из 82**, осталось **6**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
