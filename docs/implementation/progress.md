@@ -153,4 +153,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка RES-IT-05 (24 октября 2026): 27 Results PostgreSQL/HTTP/реальных broker tests прошли. Дополнены no-op replay до CAS после следующей коррекции, новый stale evaluation отвергается, outcome меняется при равных нулевых баллах и создаёт публикацию, late Initial не откатывает исправление. Ранее проверенные material/publication conflict, senior wire lineage, SQL-before-commit receipt/outbox rollback и broker ack/confirm recovery остаются в общем gate. Нулевая цена используется только в изолированном тесте; fixture 10/20 неизменен.
 
-Выполнено **68 из 82**, осталось **14**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-FE-04 (24 октября 2026): Private AppealView получил необязательный reviewState SeniorQueued/SeniorAssigned без assignment authority. Backend выводит его из принятого progress; OpenAPI/generated DTO/runtime allowlist и оба UI согласованы. 111 frontend tests и 99 contract tests успешны, typecheck/DTO check прошли. Новый component case проверяет очередь→назначение старшего без Registered/повторного выбора/ссылки прежнему selected жюри. Материал по-прежнему выдаёт только Checking owner.
+
+Выполнено **69 из 82**, осталось **13**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.

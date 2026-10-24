@@ -7,6 +7,7 @@ export const states: Record<AppealSummary['state'], string> = {
   AwaitingSeniorReview: 'Ожидает старшего жюри', AwaitingResultApplication: 'Ожидает применения результата', Closed: 'Завершена', NeedsResolution: 'Требуется разбор конфликта',
 };
 export const exactVersion = (v: unknown): v is string => typeof v === 'string' && /^[1-9][0-9]*$/.test(v);
+export function reviewLabel(v: AppealView): string { return v.reviewState === 'SeniorAssigned' ? 'Перепроверка назначена старшему жюри' : v.reviewState === 'SeniorQueued' ? 'Перепроверка в очереди старшего жюри' : states[v.state]; }
 const record = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown) => typeof v === 'string' && v.length > 0;
 const fields = ['appealId', 'tournamentId', 'teamId', 'taskId', 'state', 'submittedAt', 'version'];
@@ -16,9 +17,10 @@ function summary(v: unknown, tournament: string): v is AppealSummary & Record<st
     && typeof v.submittedAt === 'string' && v.submittedAt.endsWith('Z') && Number.isFinite(Date.parse(v.submittedAt));
 }
 export function readView(v: unknown, tournament: string): AppealView {
-  if (!summary(v, tournament) || !record(v) || Object.keys(v).some(k => ![...fields, 'resultId', 'resultVersion', 'baseCheckId', 'basePublicationId', 'finalPublicationId', 'baseOutcome', 'recheckRequestId', 'checkId'].includes(k))
+  if (!summary(v, tournament) || !record(v) || Object.keys(v).some(k => ![...fields, 'resultId', 'resultVersion', 'baseCheckId', 'basePublicationId', 'finalPublicationId', 'reviewState', 'baseOutcome', 'recheckRequestId', 'checkId'].includes(k))
     || !['resultId', 'baseCheckId', 'basePublicationId'].every(k => text(v[k])) || !exactVersion(v.resultVersion)
     || !['Correct', 'Incorrect'].includes(String(v.baseOutcome)) || ['finalPublicationId', 'recheckRequestId', 'checkId'].some(k => k in v && !text(v[k]))) throw new ApiProtocolError();
+  if ('reviewState' in v && (v.state !== 'AwaitingSeniorReview' || !['SeniorQueued', 'SeniorAssigned'].includes(String(v.reviewState)))) throw new ApiProtocolError();
   return v as unknown as AppealView;
 }
 export function readList(v: unknown, tournament: string, team?: string): AppealSummary[] {

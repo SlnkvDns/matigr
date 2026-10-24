@@ -4,7 +4,7 @@ import type { components as checking } from '../../shared/api/generated/checking
 import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
-import { exactVersion, readList, readView, states } from './appeals';
+import { exactVersion, readList, readView, reviewLabel } from './appeals';
 import type { AppealSummary, AppealView } from './appeals';
 
 export function JuryAppeals({ tournament }: { tournament: string }) {
@@ -75,7 +75,7 @@ export function JuryAppeals({ tournament }: { tournament: string }) {
       <ul>{items.map(item => <li key={item.appealId}>Команда {item.teamId}, задача {item.taskId}.{' '}
         <button disabled={sending || retry} onClick={() => void claim(item)}>Выбрать апелляцию</button></li>)}</ul>
     </section>
-    {detail && <section aria-label="Выбранная апелляция"><h2>Выбранная апелляция</h2><p>{states[detail.view.state]}</p>
+    {detail && <section aria-label="Выбранная апелляция"><h2>Выбранная апелляция</h2><p>{reviewLabel(detail.view)}</p>
       {detail.view.state === 'AwaitingResultApplication' && <p>Вердикт получен. Ожидаем подтверждения публикации Results.</p>}
       {detail.view.state === 'Closed' && <p>Результат опубликован. Итоговая публикация: {detail.view.finalPublicationId}</p>}
       {detail.view.state === 'NeedsResolution' && <p>Результат не применён. Требуется разбор конфликта без повторной подачи.</p>}

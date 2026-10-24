@@ -24,6 +24,7 @@ internal static class AppealStorage
         if (a.Attempt is { } attempt) view["recheckRequestId"] = attempt.RequestId.ToString("D");
         if ((a.Progress?.CheckId ?? a.Receipt?.EvaluationId ?? a.Rejection?.EvaluationId) is { } check) view["checkId"] = check.ToString("D");
         if (a.Receipt is { } receipt) view["finalPublicationId"] = receipt.PublicationId.ToString("D");
+        if (a.State == AppealState.AwaitingSeniorReview) view["reviewState"] = a.Progress?.AssignmentId is null ? "SeniorQueued" : "SeniorAssigned";
         return JsonSerializer.Serialize(view, Json);
     }
     internal static void Update(AppealRow row, Appeal a)

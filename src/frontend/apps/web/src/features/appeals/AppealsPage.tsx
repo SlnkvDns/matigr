@@ -4,7 +4,7 @@ import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
-import { exactVersion, readList, readView, states } from './appeals';
+import { exactVersion, readList, readView, reviewLabel, states } from './appeals';
 import type { AppealSummary, AppealView } from './appeals';
 import { JuryAppeals } from './JuryAppeals';
 
@@ -80,7 +80,7 @@ function TeamAppeals({ tournament }: { tournament: string }) {
           <button disabled={!ready || loading || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button></>}
     </section> : <p>Выберите опубликованный результат на странице команды.</p>}
     <section aria-label="Мои апелляции"><h2>Мои апелляции</h2>{ready && items.length === 0 && <p>Апелляций пока нет.</p>}
-      <ul>{items.map(item => <li key={item.appealId}>Задача {item.taskId}: {states[item.state]}
+      <ul>{items.map(item => <li key={item.appealId}>Задача {item.taskId}: {details.find(d => d.appealId === item.appealId) ? reviewLabel(details.find(d => d.appealId === item.appealId)!) : states[item.state]}
         {details.find(d => d.appealId === item.appealId)?.finalPublicationId && <p>Итоговая публикация: {details.find(d => d.appealId === item.appealId)!.finalPublicationId}</p>}
         {item.state === 'AwaitingResultApplication' && <p>Вердикт получен. Ожидаем подтверждения публикации Results.</p>}
         {item.state === 'NeedsResolution' && <p>Результат не применён. Исходное основание сохранено; требуется разбор конфликта.</p>}

@@ -189,6 +189,11 @@ export interface components {
             resultVersion: components["schemas"]["PositiveVersion"];
             baseCheckId: components["schemas"]["OpaqueId"];
             basePublicationId: components["schemas"]["OpaqueId"];
+            /**
+             * @description Private progress only while AwaitingSeniorReview; never assignment authority.
+             * @enum {string}
+             */
+            reviewState?: "SeniorQueued" | "SeniorAssigned";
             /** @description Present only after a validated Applied receipt closes the Appeal. */
             finalPublicationId?: components["schemas"]["OpaqueId"];
             baseOutcome: components["schemas"]["Outcome"];

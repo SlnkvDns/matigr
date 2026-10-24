@@ -8,6 +8,21 @@ import { credential, deferred, jsonResponse } from '../../shared/auth/test-suppo
 
 const item = () => ({ appealId: 'a', tournamentId: 't', teamId: 'team', taskId: 'task', state: 'Registered', version: '1', submittedAt: '2026-10-24T00:00:00Z' });
 const detail = (state = 'AcceptedAwaitingRecheck', version = '2') => ({ ...item(), state, version, resultId: 'r', resultVersion: '1', baseCheckId: 'base', basePublicationId: 'p', baseOutcome: 'Correct', recheckRequestId: 'request' });
+it('senior queue and assignment never restore Registered choice or the released selected assignment', async () => {
+  let assigned = false;
+  setup(vi.fn(async (url, init) => {
+    if (init?.method === 'POST') return jsonResponse({ appealId: 'a', state: 'AcceptedAwaitingRecheck', version: '2' }, 202);
+    if (String(url).includes('/tournaments/')) return jsonResponse({ tournamentId: 't', items: [item()] });
+    if (String(url).includes('/checking/')) return new Response(null, { status: 204 });
+    return jsonResponse({ ...detail('AwaitingSeniorReview', assigned ? '5' : '4'), checkId: 'check', reviewState: assigned ? 'SeniorAssigned' : 'SeniorQueued' });
+  }));
+  fireEvent.click(await screen.findByRole('button', { name: 'Выбрать апелляцию' }));
+  await screen.findByText('Перепроверка в очереди старшего жюри');
+  expect(screen.queryByText('Выбрать снова')).toBeNull(); expect(screen.queryByText('Открыть назначенную перепроверку')).toBeNull();
+  assigned = true; fireEvent.click(screen.getByText('Обновить выбранную апелляцию'));
+  await screen.findByText('Перепроверка назначена старшему жюри');
+  expect(screen.queryByText('Открыть назначенную перепроверку')).toBeNull();
+});
 function setup(fetcher: typeof fetch) {
   vi.stubGlobal('fetch', fetcher);
   function Main() {
