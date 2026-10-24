@@ -171,4 +171,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка RES-E2E-03 (24 октября 2026): В V4 visitor ушёл на about:blank до обновления и вернулся после SIGKILL/restart Results, пропустив invalidation: GET восстановил итоговую таблицу 1,1,2. Реальные Completed дубли/новые messageId не меняют публикацию/snapshot; schema/public reads успешны после broker restart предыдущего gate. Snapshot/transaction согласованность подтверждена reader/writer PG barrier; 10 local GET smoke p50 10.7ms max55.3ms записаны в tests/e2e/v4.md с явным ограничением Q10, без придуманного SLO.
 
-Выполнено **77 из 82**, осталось **5**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-INT-08 (24 октября 2026): check-appeals-contracts.mjs --senior проверил 14 реальных outbox envelopes и три senior facts Assigned/Completed/Applied. Producer и независимые consumer schemas одинаково требуют assignmentKind/decisionOrigin, selected/actual, escalationId; schema99/private payload/отсутствующий escalation отвергнуты. Настоящий достаточный senior Applied был принят раньше эскалации/назначения; потом late facts не меняют Closed. Domain/PG отрицательная lineage matrix успешна.
+
+Выполнено **78 из 82**, осталось **4**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
