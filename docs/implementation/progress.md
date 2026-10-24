@@ -155,4 +155,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-FE-04 (24 октября 2026): Private AppealView получил необязательный reviewState SeniorQueued/SeniorAssigned без assignment authority. Backend выводит его из принятого progress; OpenAPI/generated DTO/runtime allowlist и оба UI согласованы. 111 frontend tests и 99 contract tests успешны, typecheck/DTO check прошли. Новый component case проверяет очередь→назначение старшего без Registered/повторного выбора/ссылки прежнему selected жюри. Материал по-прежнему выдаёт только Checking owner.
 
-Выполнено **69 из 82**, осталось **13**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-IT-05 (24 октября 2026): 29 Appeals PostgreSQL tests прошли. Новые два test cases детерминированно удерживают фактический FOR UPDATE submission_windows после выполнения SQL и запускают конкурента до release: Submit-first даёт 201, End-first даёт WindowClosed без квоты. Оба завершают Closed; successful Submit/end replay сохраняются после конца. Scope organizer и bootstrap INSERT-on-absence проверены прежними HTTP/PG gates; ReceivedAt не обходит row-lock boundary T05.
+
+Выполнено **70 из 82**, осталось **12**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
