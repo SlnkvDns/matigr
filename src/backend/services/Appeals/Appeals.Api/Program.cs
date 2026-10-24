@@ -28,6 +28,7 @@ app.MapAppealWork();
 app.MapGet("/health/ready", async (IAppealsReadiness readiness, CancellationToken cancellationToken) =>
 {
     var state = await readiness.ProbeAsync(cancellationToken);
+    if (state.Broker is { } broker) return Results.Json(new { status = state.Ready ? "Ready" : "Unavailable", state.Database, broker }, statusCode: state.Ready ? 200 : 503);
     return Results.Json(new { status = state.Ready ? "Ready" : "Unavailable", state.Database },
         statusCode: state.Ready ? 200 : 503);
 }).AllowAnonymous();

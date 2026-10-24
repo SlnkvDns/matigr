@@ -68,7 +68,8 @@ internal sealed partial class AppealProcess(AppealsDbContext db) : IInboundHandl
                     next = ApplyFinal(name, p, envelope, before, out var handled);
                     if (!handled) next = ApplySenior(name, p, envelope, before);
                 }
-            } catch (AppealRuleException e) { throw new InvalidMessageException(e.Message); }
+            } catch (AppealRuleException e) { AppealsMetrics.Conflicts.Add(1); throw new InvalidMessageException(e.Message); }
+            catch (InvalidMessageException) { AppealsMetrics.Conflicts.Add(1); throw; }
         }
         if (next != before) {
             AppealStorage.Update(row, next); attempt.State = next.Attempt!.State.ToString(); attempt.ReasonCode = next.Conflict;
@@ -76,7 +77,9 @@ internal sealed partial class AppealProcess(AppealsDbContext db) : IInboundHandl
                 RequestId = request, CheckId = next.Progress?.CheckId ?? next.Receipt?.EvaluationId ?? next.Rejection?.EvaluationId, Snapshot = row.Snapshot, OccurredAt = DateTimeOffset.UtcNow });
         }
         db.Inbox.Add(new() { Consumer = Consumer, MessageId = message, PayloadHash = hash, ProcessedAt = DateTimeOffset.UtcNow });
-        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return new(true);
+        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        if (next != before) AppealsMetrics.Transitions.Add(1, new KeyValuePair<string, object?>("state", next.State.ToString()));
+        return new(true);
     }
     private static void CheckBasis(JsonElement p, Appeal appeal)
     {

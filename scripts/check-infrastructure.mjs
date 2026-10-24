@@ -95,7 +95,7 @@ assert.equal(processIdentity.status, 0);
 assert.match(processIdentity.stdout, /^Uid:\s+1654\s+1654\s+1654\s+1654/m);
 const appealsReady = await fetch('http://127.0.0.1:5103/health/ready', { signal: AbortSignal.timeout(5000) });
 assert.equal(appealsReady.status, 200);
-assert.deepEqual(await appealsReady.json(), { status: 'Ready', database: true });
+assert.deepEqual(await appealsReady.json(), { status: 'Ready', database: true, broker: true });
 const appealsPassword = (await readFile(path.join(root, '.local/secrets/appeals_db_password'), 'utf8')).trim();
 function appealsSql(sql) {
   return run(['exec', '-T', 'appeals-db', 'sh', '-c',

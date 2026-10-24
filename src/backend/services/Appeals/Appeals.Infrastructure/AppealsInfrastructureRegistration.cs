@@ -12,9 +12,9 @@ public static class AppealsInfrastructureRegistration
         services.AddDbContext<AppealsDbContext>(options => options.UseNpgsql(
             configuration.GetConnectionString("Appeals")
                 ?? throw new InvalidOperationException("Appeals connection string is required.")));
-        services.AddSingleton<IAppealsReadiness>(_ => new AppealsReadiness(
+        services.AddSingleton<IAppealsReadiness>(provider => new AppealsReadiness(
             configuration.GetConnectionString("Appeals")
-                ?? throw new InvalidOperationException("Appeals connection string is required.")));
+                ?? throw new InvalidOperationException("Appeals connection string is required."), provider.GetServices<Matigr.Transport.TransportHealth>().ToArray()));
         services.AddScoped<AppealsFixtureWindowSeeder>();
         services.AddScoped<IManualEnd, ManualEnd>();
         services.AddScoped<IAppealWork, AppealWork>();

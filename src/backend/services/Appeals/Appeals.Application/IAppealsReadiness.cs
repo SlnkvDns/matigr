@@ -1,8 +1,8 @@
 namespace Matigr.Appeals.Application;
 
-public sealed record AppealsReadinessState(bool Database)
+public sealed record AppealsReadinessState(bool Database, bool? Broker = null)
 {
-    public bool Ready => Database;
+    public bool Ready => Database && Broker != false;
 }
 
 public interface IAppealsReadiness

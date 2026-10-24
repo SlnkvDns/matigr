@@ -145,4 +145,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 
 Проверка APL-UT-03 (24 октября 2026): **69 Appeals tests** прошли, build без предупреждений/ошибок. Добавлены 24 перестановки escalation/senior assignment/Applied, Selected fact до/после них и оба changed/no-op; один Closed, immutable selected, actual senior/assignment/escalation и повтор без версии. Отрицательные cases требуют escalation у senior receipt и запрещают замену известного actual senior assignment. Domain дополнительно диагностирует поздний другой escalation после терминального receipt; это не меняет Closed и не возвращает права прежнему жюри. Реальные права/старый capability проверены Checking gates.
 
-V0/V1/V2 завершены. Следующие доступные шаги — **RES-IT-05**, APL-INT-07 и APL-FE-02 по своим зависимостям. Выполнено **64 из 82**, осталось **18**: Checking 1, Results 3, Appeals 14. Загрузка/приём/QR, ручное снятие назначения, изменение стоимости и турнирный CRUD не добавлялись.
+Проверка APL-INT-07 (24 октября 2026): 27 PostgreSQL tests успешны: durable defer/quarantine/raw/redrive audit и неизменная permanent quota. Живой check-appeals-recovery.mjs прошёл Rabbit down/restart, readiness 503→200 с двумя соединениями, прежние назначения, poison schema99 и redrive с тем же messageId без новой попытки. Добавлены безопасные state/transition/conflict metrics без private IDs. Секреты и volumes сохранены.
+
+Выполнено **65 из 82**, осталось **17**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
