@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 
 assert.ok(process.env.COMPOSE_PROJECT_NAME, 'Select a fresh test Compose project explicitly');
 const project = process.env.COMPOSE_PROJECT_NAME;
@@ -36,4 +36,27 @@ export async function management(path, method = 'GET', body) {
 export async function session(testSubjectId) {
   const r = await fetch('http://127.0.0.1:5101/dev/v1/session/select', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ testSubjectId }) });
   assert.equal(r.status, 200); return (await r.json()).accessToken;
+}
+
+// Test-only PostgreSQL barrier. The holding connection is released explicitly, never by a timer.
+export async function databaseBarrier(service, key) {
+  assert.ok(['checking', 'results'].includes(service));
+  assert.ok(Number.isSafeInteger(key));
+  const password = (await readFile(new URL(`../.local/secrets/${service}_db_password`, import.meta.url), 'utf8')).trim();
+  const child = spawn('docker', ['compose', '-p', project, '-f', 'infra/compose/compose.yaml', 'exec', '-T', `${service}-db`, 'sh', '-c',
+    `read -r PGPASSWORD; export PGPASSWORD; exec psql -h 127.0.0.1 -U ${service}_app -d ${service}_db -At -v ON_ERROR_STOP=1`], { stdio: ['pipe', 'pipe', 'pipe'] });
+  const exited = new Promise(resolve => child.once('exit', resolve));
+  let output = ''; let errors = '';
+  child.stdout.on('data', data => { output += data; });
+  child.stderr.on('data', data => { errors += data; });
+  child.stdin.write(`${password}\nSELECT pg_advisory_lock(${key});\n\\echo matigr_barrier_ready\n`);
+  try { await eventually(async () => output.includes('matigr_barrier_ready'), Boolean, 'database fault barrier acquired'); }
+  catch (error) { child.stdin.end('\\q\n'); throw error; }
+  let released = false;
+  return async () => {
+    if (released) return;
+    released = true;
+    child.stdin.end(`SELECT pg_advisory_unlock(${key});\n\\q\n`);
+    assert.equal(await exited, 0, `Fault barrier release failed: ${errors}`);
+  };
 }
