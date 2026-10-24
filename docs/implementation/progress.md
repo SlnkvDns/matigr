@@ -148,3 +148,6 @@ Results: **16 PostgreSQL/HTTP tests**. Две задачи одной коман
 Проверка APL-INT-07 (24 октября 2026): 27 PostgreSQL tests успешны: durable defer/quarantine/raw/redrive audit и неизменная permanent quota. Живой check-appeals-recovery.mjs прошёл Rabbit down/restart, readiness 503→200 с двумя соединениями, прежние назначения, poison schema99 и redrive с тем же messageId без новой попытки. Добавлены безопасные state/transition/conflict metrics без private IDs. Секреты и volumes сохранены.
 
 Выполнено **65 из 82**, осталось **17**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.
+Проверка APL-FE-02 (24 октября 2026): Экран Registered с явным claim, подтверждённым busy и ручной новой попыткой. 202 не считается назначением: ссылка открывается только после GET собственного Checking assignment с совпадающим checkId/reviewer. Неопределённый повтор сохраняет key/If-Match; 409/412 только перечитывают. Typecheck и 109 frontend tests прошли, включая три новых component cases.
+
+Выполнено **66 из 82**, осталось **16**. Реализация продолжается по зависимостям оставшихся задач; MVP и исходные стоимости не расширялись.

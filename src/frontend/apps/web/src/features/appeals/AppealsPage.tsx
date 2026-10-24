@@ -6,13 +6,14 @@ import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
 import { exactVersion, readList, readView, states } from './appeals';
 import type { AppealSummary, AppealView } from './appeals';
+import { JuryAppeals } from './JuryAppeals';
 
 export function AppealsPage() {
   const { snapshot } = useSession(); const [query] = useSearchParams();
   const tournament = query.get('tournamentId') ?? snapshot.profile?.tournamentIds[0] ?? '';
   return <Page title="Апелляции" description="Обращения команд по опубликованным результатам.">
     {snapshot.profile?.roles.includes('Team') ? <TeamAppeals tournament={tournament} />
-      : <p>{snapshot.profile?.roles.some(r => r === 'Jury' || r === 'Senior') ? 'Поданные апелляции выбираются жюри вручную.' : 'Для подачи апелляции войдите как команда.'}</p>}
+      : snapshot.profile?.roles.some(r => r === 'Jury' || r === 'Senior') ? <JuryAppeals tournament={tournament} /> : <p>Для подачи апелляции войдите как команда.</p>}
   </Page>;
 }
 function TeamAppeals({ tournament }: { tournament: string }) {
