@@ -37,6 +37,9 @@ jobs:
       - run: node scripts/prepare-fixtures.mjs
       - run: node scripts/check-checking-storage.mjs
       - run: node scripts/check-results-storage.mjs
+      - run: node scripts/check-appeals-storage.mjs
+      - if: always()
+        run: docker compose -p matigr-appeals-storage-tests -f infra/compose/appeals-storage-tests.yaml down
       - if: always()
         run: docker compose -p matigr-results-storage-tests -f infra/compose/results-storage-tests.yaml down
       - if: always()
