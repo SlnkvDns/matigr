@@ -22,6 +22,7 @@ if (app.Environment.IsEnvironment("Local"))
 app.MapGet("/health/live", () => Results.Ok(new { status = "Alive" })).AllowAnonymous();
 app.MapAppealCommands();
 app.MapAppealSubmissions();
+app.MapAppealWork();
 app.MapGet("/health/ready", async (IAppealsReadiness readiness, CancellationToken cancellationToken) =>
 {
     var state = await readiness.ProbeAsync(cancellationToken);

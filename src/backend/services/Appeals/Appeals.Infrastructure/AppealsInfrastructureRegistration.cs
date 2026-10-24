@@ -17,6 +17,7 @@ public static class AppealsInfrastructureRegistration
                 ?? throw new InvalidOperationException("Appeals connection string is required.")));
         services.AddScoped<AppealsFixtureWindowSeeder>();
         services.AddScoped<IManualEnd, ManualEnd>();
+        services.AddScoped<IAppealWork, AppealWork>();
         services.AddHttpClient<IResultsBasis, ResultsBasisClient>(http => {
             if (configuration["Results:BaseUrl"] is { } url) http.BaseAddress = new Uri(url);
             var timeout = configuration.GetValue<int?>("Results:TimeoutSeconds") ?? 5;
