@@ -61,5 +61,8 @@ jobs:
       - run: node scripts/check-checking-faults.mjs
         env:
           COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-results-faults.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
       - if: always()
         run: docker compose -f infra/compose/compose.yaml down
