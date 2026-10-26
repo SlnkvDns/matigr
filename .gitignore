@@ -13,3 +13,6 @@
 *.suo
 playwright-report/
 test-results/
+
+# Standalone Sites source checkouts have their own repository and publication lifecycle.
+/sites/
