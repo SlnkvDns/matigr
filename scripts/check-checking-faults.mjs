@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { randomUUID } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { compose, sql, quote, eventually, session, databaseBarrier } from './transport-test-support.mjs';
+import { waitForHttpReady } from './http-test-support.mjs';
 
 const manifest = JSON.parse(await readFile(new URL('../infra/fixtures/manifest.json', import.meta.url)));
 const auth = await session('jury-a');
@@ -33,7 +34,7 @@ try {
   await eventually(() => sql('checking', `SELECT status FROM outbox WHERE message_id=${quote(message)}`), x => x === 'Sent', 'same message recovered after expired publisher lease');
   assert.equal(await sql('checking', `SELECT count(*) FROM outbox WHERE envelope->'payload'->>'checkId'=${quote(check)}`), '1');
   assert.equal(await sql('results', `SELECT count(*) FROM result_publications WHERE result_id IN (SELECT result_id FROM evaluation_receipts WHERE evaluation_id=${quote(check)})`), '1');
-  await eventually(async () => (await fetch('http://127.0.0.1:5101/health/ready')).status, x => x === 200, 'Checking recovered');
+  await waitForHttpReady('http://127.0.0.1:5101/health/ready', 'Checking recovered');
   const replay = await post(`/checks/${check}/complete`, verdict, key, claim.headers.get('ETag'));
   assert.equal(replay.status, 200, 'lost HTTP reply replays after crash with original ETag');
 } finally {

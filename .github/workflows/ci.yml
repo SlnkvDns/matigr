@@ -33,6 +33,7 @@ jobs:
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
           node-version-file: .node-version
+      - run: node --test tests/integration/http-readiness.test.mjs
       - run: node scripts/init-local.mjs
       - run: node scripts/prepare-fixtures.mjs
       - run: node scripts/check-checking-storage.mjs

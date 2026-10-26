@@ -14,6 +14,8 @@ try {
     if ($LASTEXITCODE) { throw 'Architecture check failed' }
     node scripts/check-docs.mjs
     if ($LASTEXITCODE) { throw 'Documentation check failed' }
+    node --test tests/integration/http-readiness.test.mjs
+    if ($LASTEXITCODE) { throw 'HTTP readiness regression tests failed' }
     node scripts/prepare-fixtures.mjs
     if ($LASTEXITCODE) { throw 'Fixture preparation failed' }
     node --test tests/fixtures/fixtures.test.mjs
