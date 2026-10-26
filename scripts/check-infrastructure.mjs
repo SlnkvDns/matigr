@@ -25,10 +25,12 @@ for (const [name, service] of Object.entries(cfg.services))
 const appealsApi = cfg.services['appeals-api'];
 const resultsApi = cfg.services['results-api'];
 assert.deepEqual(Object.keys(resultsApi.networks), ['results-data', 'transport']);
-assert.deepEqual(resultsApi.secrets.map(s => s.source), ['results_db_password', 'results_broker_password', 'dev_issuer_public']);
+assert.deepEqual(resultsApi.secrets.map(s => s.source).sort(),
+  ['results_db_password', 'results_broker_password', 'dev_issuer_public', 'appeals_results_public'].sort());
 assert.ok(resultsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
 assert.deepEqual(Object.keys(appealsApi.networks), ['appeals-data', 'transport']);
-assert.deepEqual(appealsApi.secrets.map(s => s.source), ['appeals_db_password']);
+assert.deepEqual(appealsApi.secrets.map(s => s.source).sort(),
+  ['appeals_db_password', 'appeals_results_private', 'dev_issuer_public', 'appeals_broker_password'].sort());
 assert.ok(appealsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
 for (const service of ['checking', 'results', 'appeals']) {
   const db = cfg.services[`${service}-db`];
