@@ -61,6 +61,9 @@ canonical(appeal);
 await management('exchanges/matigr/matigr.v1/publish', 'POST', { properties: { message_id: appeal.messageId, app_id: 'Checking', delivery_mode: 2, content_type: 'application/json' },
   routing_key: 'checking.check-completed.appeal.v1', payload: JSON.stringify(appeal), payload_encoding: 'string' });
 await eventually(() => sql('results', `SELECT reason_code FROM processing_failures WHERE message_id=${quote(appeal.messageId)} AND state='Deferred'`), x => x === 'ScoringDependencyUnavailable', 'Results owns its independent Appeal copy');
-const copies = await management('queues/matigr/appeals.checking-facts.v1/get', 'POST', { count: 100, ackmode: 'ack_requeue_true', encoding: 'auto' });
-assert.ok(copies.some(copy => JSON.parse(copy.payload).messageId === appeal.messageId), 'Appeals did not receive its separate copy');
+// The active Appeals consumer may acknowledge its copy before a queue peek.
+// This synthetic appeal has no local dependency, so receipt must be durably deferred.
+await eventually(() => sql('appeals', `SELECT reason_code FROM processing_failures
+  WHERE consumer='Appeals.Process.v1' AND message_id=${quote(appeal.messageId)} AND state IN ('Deferred','Quarantined')`),
+  x => x === 'AppealDependencyUnavailable', 'Appeals owns its independent Appeal copy');
 console.log('Transport: broker restart/confirm, mandatory return, poison/audited redrive, separate CheckCompleted copies for Results and Appeals: OK');
