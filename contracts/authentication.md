@@ -36,7 +36,7 @@ Results/Appeals проверяют тот же пользовательский 
 
 Все host требуют `Identity:Issuer`, `Identity:Audience`, `Identity:PublicKeyPath`. В Local/Test дополнительно обязательны `Fixtures:Directory`, `DevIdentity:PrivateKeyPath`, положительный `DevIdentity:LifetimeSeconds`. Настройки передаются обычной ASP.NET configuration (`__` в environment). Без обязательных файлов/настроек запуск завершается ошибкой; пара ключей не генерируется во время выдачи. Manifest/key pair сверяются при запуске.
 
-Compose задаёт техническое время токена **3600 секунд** как изменяемую настройку локальной среды; это не бизнес-срок и не TTL назначения. Ключи создаёт `scripts/prepare-fixtures.mjs` в игнорируемой `.local/secrets`. Только Checking получает private key; копии внутри контейнера принадлежат UID 1654 с mode 600, host permissions не ослабляются. Results/Appeals получают только public key пользовательского issuer. Ключи не публикуются HTTP и не входят в образ.
+Compose задаёт техническое время токена **3600 секунд** как изменяемую настройку локальной среды; это не бизнес-срок и не TTL назначения. Ключи создаёт `scripts/prepare-fixtures.mjs` в игнорируемой `.local/secrets`. Только Checking получает private key пользовательского issuer; Results/Appeals получают его public key. Entrypoints всех трёх сервисов копируют необходимые ключи из root-only Compose secrets в runtime-каталоги с владельцем UID 1654, mode 600 для файлов и 700 для каталогов; host permissions не ослабляются. Отдельная сервисная пара Appeals → Results не смешивается с пользовательским issuer. Ключи не публикуются HTTP и не входят в образ.
 
 ```sh
 node scripts/init-local.mjs

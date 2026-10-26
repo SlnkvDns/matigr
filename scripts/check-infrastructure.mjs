@@ -32,6 +32,20 @@ assert.deepEqual(Object.keys(appealsApi.networks), ['appeals-data', 'transport']
 assert.deepEqual(appealsApi.secrets.map(s => s.source).sort(),
   ['appeals_db_password', 'appeals_results_private', 'dev_issuer_public', 'appeals_broker_password'].sort());
 assert.ok(appealsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
+for (const [service, settings] of [
+  ['checking-api', ['Identity__PublicKeyPath', 'DevIdentity__PrivateKeyPath', 'StorageProtection__KeyPath']],
+  ['results-api', ['Identity__PublicKeyPath', 'ServiceIdentity__PublicKeyPath']],
+  ['appeals-api', ['Identity__PublicKeyPath', 'ResultsServiceIdentity__PrivateKeyPath']]
+]) {
+  for (const setting of settings) {
+    const keyPath = cfg.services[service].environment[setting];
+    assert.ok(keyPath, `${service}: missing ${setting}`);
+    const access = run(['exec', '-T', '--user', '1654:1654', service, 'sh', '-c',
+      'test -r "$1" && stat -c "%u:%g:%a" "$1"', 'runtime-key', keyPath]);
+    assert.equal(access.status, 0, `${service}: ${setting} must be readable by the application user`);
+    assert.equal(access.stdout.trim(), '1654:1654:600', `${service}: runtime key ownership/mode`);
+  }
+}
 for (const service of ['checking', 'results', 'appeals']) {
   const db = cfg.services[`${service}-db`];
   assert.deepEqual(Object.keys(db.networks), [`${service}-data`]);

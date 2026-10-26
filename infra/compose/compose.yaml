@@ -104,10 +104,10 @@ services:
       Broker__Username: results
       Identity__Issuer: matigr-local
       Identity__Audience: matigr-user-api
-      Identity__PublicKeyPath: /run/secrets/dev_issuer_public
+      Identity__PublicKeyPath: /run/matigr-identity/public.pem
       ServiceIdentity__Issuer: matigr-appeals-local
       ServiceIdentity__Audience: matigr-results-internal
-      ServiceIdentity__PublicKeyPath: /run/secrets/appeals_results_public
+      ServiceIdentity__PublicKeyPath: /run/matigr-identity/appeals-results-public.pem
     volumes:
       - ../fixtures:/fixtures:ro
     secrets: [results_db_password, results_broker_password, dev_issuer_public, appeals_results_public]
@@ -138,7 +138,7 @@ services:
       ResultsServiceIdentity__PrivateKeyPath: /run/matigr-service/private.pem
       Identity__Issuer: matigr-local
       Identity__Audience: matigr-user-api
-      Identity__PublicKeyPath: /run/secrets/dev_issuer_public
+      Identity__PublicKeyPath: /run/matigr-service/user-public.pem
     volumes:
       - ../fixtures:/fixtures:ro
     secrets: [appeals_db_password, appeals_results_private, dev_issuer_public, appeals_broker_password]
