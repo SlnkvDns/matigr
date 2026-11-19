@@ -5,6 +5,7 @@ import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
 import { useStandingsLabels } from '../results/useStandingsLabels';
+import { demoTaskStatement } from './demoTaskStatements';
 import './checking.css';
 
 type Assignment = components['schemas']['MyAssignment'];
@@ -20,6 +21,9 @@ export function CheckingPage() {
   const [queue, setQueue] = useState<'general' | 'senior'>('general');
   const [page, setPage] = useState<Queue>();
   const [current, setCurrent] = useState<Assignment>();
+  const statement = import.meta.env.DEV && current
+    ? demoTaskStatement(current.check.tournamentId, current.check.taskId)
+    : undefined;
   const [etag, setEtag] = useState<string>();
   const [material, setMaterial] = useState<string>();
   const [error, setError] = useState<unknown>();
@@ -130,6 +134,10 @@ export function CheckingPage() {
           <p>Команда: {standings?.teams.find(team => team.teamId === current.check.teamId)?.name ?? current.check.teamId}</p>
           <p>{current.check.state === 'SeniorAssigned' ? 'Назначена вам из очереди старшего жюри'
             : current.check.kind === 'Appeal' ? 'Ваша перепроверка по апелляции' : 'Назначена вам'}</p>
+          {statement && <div className="checking-statement">
+            <h3>Учебное условие</h3>
+            <p>{statement}</p>
+          </div>}
           <button disabled={busy || !!pending || !loaded} onClick={() => void openMaterial()}>Открыть материал</button>
           {material !== undefined && <pre aria-label="Материал решения">{material}</pre>}
           <div className="checking-actions">

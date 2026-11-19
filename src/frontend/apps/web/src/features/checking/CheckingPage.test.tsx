@@ -9,10 +9,10 @@ function Login() {
   const { session } = useSession();
   return <button onClick={() => void session.select('jury')}>Войти</button>;
 }
-async function setup(state = 'Assigned', lost = false) {
+async function setup(state = 'Assigned', lost = false, task = { tournamentId: 'tournament', taskId: 'task' }) {
   let assigned = true;
   const posts: RequestInit[] = [];
-  const assignment = { check: { checkId: 'check', taskId: 'task', teamId: 'team', state, version: '2' }, assignmentId: 'assignment', capability: 'private-secret' };
+  const assignment = { check: { checkId: 'check', ...task, teamId: 'team', state, version: '2' }, assignmentId: 'assignment', capability: 'private-secret' };
   const fetcher = vi.fn(async (url: string, init: RequestInit) => {
     if (init.method === 'POST') {
       posts.push(init);
@@ -31,6 +31,21 @@ async function setup(state = 'Assigned', lost = false) {
   await screen.findByText(state === 'SeniorAssigned' ? 'Назначена вам из очереди старшего жюри' : 'Назначена вам');
   return { posts, fetcher };
 }
+
+it.each([
+  ['acdc6594-8ac1-5f18-bb65-def577a79950', /двузначные натуральные числа/],
+  ['11bf5e9e-d65b-5d67-b25f-ada9c2cfbcff', /Из чисел от 1 до 20/],
+])('shows the matching demo condition alongside the protected material button for task %s', async (taskId, statement) => {
+  await setup('Assigned', false, { tournamentId: '0344e06b-4ea1-582e-bd91-e832719773f2', taskId });
+  expect(screen.getByRole('heading', { name: 'Учебное условие' })).toBeVisible();
+  expect(screen.getByText(statement)).toBeVisible();
+  expect(screen.getByRole('button', { name: 'Открыть материал' })).toBeEnabled();
+});
+
+it('does not display the demo condition for another tournament', async () => {
+  await setup('Assigned', false, { tournamentId: 'another-tournament', taskId: 'acdc6594-8ac1-5f18-bb65-def577a79950' });
+  expect(screen.queryByRole('heading', { name: 'Учебное условие' })).toBeNull();
+});
 
 it('reads only owner material as escaped text and completes with server ETag/capability', async () => {
   const { posts } = await setup();
