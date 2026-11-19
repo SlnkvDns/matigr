@@ -71,6 +71,8 @@ public sealed partial class CheckTests
         Assert.Throws<InvalidOperationException>(() => escalated.RefuseToSenior(sa.AssignmentId, senior.ReviewerId, Guid.NewGuid(), At(6)));
         escalated.Complete(sa.AssignmentId, senior.ReviewerId, CheckOutcome.Correct, At(6));
         Assert.Same(basis, escalated.Appeal); Assert.Equal(DecisionOrigin.SeniorEscalation, escalated.Origin);
-        Assert.Throws<ArgumentException>(() => Check.CreateAppeal(Guid.NewGuid(), s, 4, basis, escalated, Guid.NewGuid(), r, At(7)));
+        var secondBasis = new AppealBasis(Guid.NewGuid(), Guid.NewGuid(), basis.ResultId, 2,
+            escalated.CheckId, Guid.NewGuid(), r.ReviewerId, escalated.Outcome!.Value);
+        Assert.Throws<ArgumentException>(() => Check.CreateAppeal(Guid.NewGuid(), s, 4, secondBasis, escalated, Guid.NewGuid(), r, At(7)));
     }
 }

@@ -44,12 +44,10 @@ public partial class StorageTests
     [Theory]
     [InlineData("unavailable", 503)]
     [InlineData("foreign", 403)]
-    [InlineData("senior", 409)]
     [InlineData("closed", 409)]
     public async Task Failed_admission_does_not_consume_quota_or_create_request(string reason, int expected)
     {
         var seed = await NewAppeal(); await using var db = fixture.Open(); var basis = Published(seed);
-        if (reason == "senior") basis = basis with { Origin = DecisionOrigin.SeniorEscalation };
         if (reason == "closed") await new ManualEnd(db).RecordAsync(new(Guid.NewGuid(), ["Organizer"], [seed.TournamentId], null), seed.TournamentId, Guid.NewGuid(), "end", default);
         var reader = new BasisReader(db, basis) { Down = reason == "unavailable" };
         var actor = new AppealActor(Guid.NewGuid(), ["Team"], [seed.TournamentId], reason == "foreign" ? Guid.NewGuid() : seed.TeamId);
@@ -57,10 +55,12 @@ public partial class StorageTests
         Assert.False(await db.Appeals.AnyAsync(x => x.TournamentId == seed.TournamentId));
         Assert.False(await db.HttpReceipts.AnyAsync(x => x.SubjectId == actor.SubjectId));
     }
-    [Fact]
-    public async Task Parallel_submissions_with_different_keys_obtain_one_permanent_tuple_and_one_success()
+    [Theory]
+    [InlineData(DecisionOrigin.OrdinaryReview)]
+    [InlineData(DecisionOrigin.SeniorEscalation)]
+    public async Task Parallel_submissions_with_different_keys_obtain_one_permanent_tuple_and_one_success(DecisionOrigin origin)
     {
-        var seed = await NewAppeal(); var basis = Published(seed); var actor = new AppealActor(Guid.NewGuid(), ["Team"], [seed.TournamentId], seed.TeamId);
+        var seed = await NewAppeal(); var basis = Published(seed) with { Origin = origin }; var actor = new AppealActor(Guid.NewGuid(), ["Team"], [seed.TournamentId], seed.TeamId);
         async Task<int> Run() {
             await using var db = fixture.Open();
             try { return (await new AppealSubmission(db, new BasisReader(db, basis)).SubmitAsync(actor, seed.ResultId, 1, Guid.NewGuid().ToString(), default)).Status; }

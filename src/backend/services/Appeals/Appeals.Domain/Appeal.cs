@@ -37,7 +37,6 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
         if (basis.TeamId != team || basis.TournamentId != window.TournamentId) throw new AppealRuleException("Forbidden");
         if (quotaUsed) throw new AppealRuleException("AlreadyAppealed");
         if (!window.Open) throw new AppealRuleException("WindowClosed");
-        if (basis.Origin == DecisionOrigin.SeniorEscalation) throw new AppealRuleException("BaseNotAppealable");
         if (now < basis.PublishedAt) throw new ArgumentException("Publication must precede submission.");
         return new(id, basis, now.ToUniversalTime(), window.Version);
     }

@@ -34,7 +34,7 @@ Frontend feature `appeals` в общем React/TypeScript/Vite app: команд
 
 Доверенный Applied с полными связями может прийти раньше RecheckAssigned/CheckCompleted/RecheckEscalated и сразу закрыть Appeal текущей попытки. Не требовать доставку всех промежуточных фактов. Противоречащий финальный receipt/связи фиксируется как аномалия и не меняет уже корректное Closed. Check version упорядочивает факты только одного Check; версии разных агрегатов не сравниваются.
 
-Одна апелляция за весь tournament/team/task, включая Closed/NeedsResolution и changed resultVersion. Первоначальный жюри может выбрать её. На старший первичный вердикт SeniorEscalation новая апелляция запрещена; роль Senior без такого происхождения сама по себе не запрет. При отказе после успешного назначения сохраняется тот же Appeal/Check/requestId, а не возврат Registered. Право дорассмотрения после конца касается и Registered, и повторного выбора после ReviewerBusy.
+Одна апелляция за весь tournament/team/task, включая Closed/NeedsResolution и changed resultVersion. Первоначальный жюри может выбрать её. Первичный вердикт SeniorEscalation допускает первую апелляцию по общим правилам. При отказе после успешного назначения сохраняется тот же Appeal/Check/requestId, а не возврат Registered. Право дорассмотрения после конца касается и Registered, и повторного выбора после ReviewerBusy.
 
 ## 3. Схема хранения
 
@@ -56,7 +56,7 @@ resultId/checkId/reviewerId — стабильные внешние ID без м
 
 | Метод и путь | Вход и права | Ответ |
 | --- | --- | --- |
-| POST `/api/v1/appeals` | Team subject; Idempotency-Key; resultId/expectedResultVersion. teamId берётся из удостоверения/проверяется по базе Results | 201 Registered + Location/ETag; повтор успешного ключа возвращает сохранённый ответ даже после конца; 409 AlreadyAppealed/WindowClosed/BaseNotAppealable/ResultVersionConflict; 503 если Results недоступен |
+| POST `/api/v1/appeals` | Team subject; Idempotency-Key; resultId/expectedResultVersion. teamId берётся из удостоверения/проверяется по базе Results | 201 Registered + Location/ETag; повтор успешного ключа возвращает сохранённый ответ даже после конца; 409 AlreadyAppealed/WindowClosed/ResultVersionConflict; 503 если Results недоступен |
 | GET `/api/v1/appeals/me?tournamentId=…` | Команда | Только свои апелляции и состояния; без служебного payload/token |
 | GET `/api/v1/appeals/tournaments/{tournamentId}?state=Registered` | Жюри в scope | Очередь поданных апелляций до принятия, минимальная база/статус/ETag. Допустимые фильтры явно перечислить в OpenAPI |
 | GET `/api/v1/appeals/{appealId}` | Своя команда либо уполномоченный жюри | Снимок процесса + ETag; публичного доступа нет |
@@ -104,11 +104,11 @@ resultId/checkId/reviewerId — стабильные внешние ID без м
 
 | Уровень | Проверка |
 | --- | --- |
-| Unit | Переходы, постоянная квота, запрет SeniorEscalation base, original reviewer разрешён, manual claim/self, busy vs refusal, no-op/changed receipt, late facts/Closed, allowed lineage и отсутствие комментария; AP-A06/08–13/16–18/20/21/24–26/32–36 |
+| Unit | Переходы, постоянная квота, допуск первичного SeniorEscalation, original reviewer разрешён, manual claim/self, busy vs refusal, no-op/changed receipt, late facts/Closed, allowed lineage и отсутствие комментария; AP-A06/08–13/16–18/20/21/24–26/32–36 |
 | PostgreSQL + HTTP integration | UNIQUE для нескольких submit, ETag claim race, replay после закрытия/другой payload, Submit vs window lock по решению Q02, trusted basis errors/права, rollback; AP-A01–05/15/19/27/30 |
 | Broker/host integration | Duplicate/redelivery/crash before-after commit/ack, Applied до Checking facts, старые attempt/assignment/version, restart waiting, Rejected/deferred/карантин; AP-A07/11–14/22–25/33–35 |
 | Frontend/contract | Registered видна до выбора, 202 не притворяется assignment, busy retry ручной, private state/ошибки; одинаковые схемы с Checking/Results, internal GET error codes |
-| E2E | V2 запрет апелляции на первичный старший; V3 no-op, V4 changed/rank, V5 senior fallback, V6 manual end/new submit blocked/дорассмотрение и busy retry после конца; AP-A17–36 |
+| E2E | Первичная апелляция после вердикта старшего и отказ во второй подаче; V3 no-op, V4 changed/rank, V5 senior fallback, V6 manual end/new submit blocked/дорассмотрение и busy retry после конца; AP-A17–36 |
 
 Два браузерных контекста/субъекта воспроизводят гонки выбора; отдельный test harness управляет задержкой/перестановкой broker delivery. Реальные PostgreSQL/брокер обязательны для интеграции; unit mocks не доказывают уникальность/commit. Сквозные проверки ждут терминального состояния и опубликованной версии, а не фиксированного сна. Эти tests реализованы и пройдены в первоначальном MVP; результаты — в журнале.
 

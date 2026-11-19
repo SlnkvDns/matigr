@@ -257,7 +257,7 @@ export interface components {
                 "application/problem+json": components["schemas"]["ProblemDetails"];
             };
         };
-        /** @description 409: AlreadyAppealed, WindowClosed, BaseNotAppealable, ResultVersionConflict, IdempotencyConflict. */
+        /** @description 409: AlreadyAppealed, WindowClosed, ResultVersionConflict, IdempotencyConflict. */
         SubmitConflict: {
             headers: {
                 "Cache-Control": components["headers"]["PrivateCache"];

@@ -79,7 +79,7 @@ public sealed partial class CheckTests
     }
 
     [Fact]
-    public void Appeal_cannot_use_senior_verdict_and_wrong_tournament_cannot_claim_initial_check()
+    public void Appeal_can_use_initial_senior_verdict_and_wrong_tournament_cannot_claim_initial_check()
     {
         var (solution, reviewer, senior) = Fixture();
         var baseCheck = Check.CreateInitial(Guid.NewGuid(), solution);
@@ -90,8 +90,9 @@ public sealed partial class CheckTests
         var basis = new AppealBasis(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), 1,
             baseCheck.CheckId, Guid.NewGuid(), reviewer.ReviewerId, CheckOutcome.Correct);
 
-        Assert.Throws<ArgumentException>(() => Check.CreateAppeal(Guid.NewGuid(), solution, 2, basis,
-            baseCheck, Guid.NewGuid(), reviewer, At(5)));
+        var appeal = Check.CreateAppeal(Guid.NewGuid(), solution, 2, basis, baseCheck, Guid.NewGuid(), reviewer, At(5));
+        Assert.Equal(baseCheck.CheckId, appeal.Appeal!.BaseCheckId);
+        Assert.Equal(reviewer.ReviewerId, appeal.CurrentAssignment!.Scope.ReviewerId);
         Assert.Throws<InvalidOperationException>(() => Check.CreateInitial(Guid.NewGuid(), solution)
             .Assign(Guid.NewGuid(), new ReviewerScope(Guid.NewGuid(), Guid.NewGuid(), ReviewerRole.Reviewer), At(1)));
     }

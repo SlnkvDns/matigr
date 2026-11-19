@@ -124,9 +124,9 @@ public sealed class Check
         ArgumentNullException.ThrowIfNull(baseCheck);
         ArgumentNullException.ThrowIfNull(selectedReviewer);
         if (appeal.BaseCheckId != baseCheck.CheckId || baseCheck.State != CheckState.Completed ||
-            baseCheck.Origin == DecisionOrigin.SeniorEscalation || baseCheck.Outcome != appeal.BaseOutcome ||
+            baseCheck.Kind != CheckKind.Initial || baseCheck.Outcome != appeal.BaseOutcome ||
             !Equals(baseCheck.Solution, solution))
-            throw new ArgumentException("The appeal basis must match a completed, appealable check for the same solution.", nameof(baseCheck));
+            throw new ArgumentException("The appeal basis must match a completed initial check for the same solution.", nameof(baseCheck));
         if (baseCheck.CheckId == checkId) throw new ArgumentException("An appeal cannot be based on itself.", nameof(appeal));
         if (selectedReviewer.ReviewerId != appeal.SelectedReviewerId)
             throw new ArgumentException("The assignment must belong to the selected reviewer.", nameof(selectedReviewer));

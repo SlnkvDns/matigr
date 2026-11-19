@@ -38,11 +38,9 @@ internal sealed class ResultReads(ResultsDbContext db) : IResultReads
     {
         if (!await db.Teams.AnyAsync(x => x.TournamentId == tournament && x.TeamId == team, ct)) throw new ResultReadException(404, "TeamNotFound");
         var rows = await db.Results.AsNoTracking().Where(x => x.TournamentId == tournament && x.TeamId == team).OrderBy(x => x.TaskId).ToArrayAsync(ct);
-        return new(tournament.ToString("D"), rows.Select(x => {
-            var p = JsonSerializer.Deserialize<ResultPublication>(x.Publication, ApplyEvaluation.Json)!;
-            return new MyTaskResult(x.TaskId.ToString("D"), x.ResultId.ToString("D"), ApplyEvaluation.Version(x.ResultVersion),
-                x.PublicationId.ToString("D"), x.Outcome, ApplyEvaluation.Exact(x.Score),
-                p.Source.Origin == DecisionOrigin.SeniorEscalation ? "SeniorFinal" : "CheckWithAppeals"); }).ToArray());
+        return new(tournament.ToString("D"), rows.Select(x => new MyTaskResult(
+            x.TaskId.ToString("D"), x.ResultId.ToString("D"), ApplyEvaluation.Version(x.ResultVersion),
+            x.PublicationId.ToString("D"), x.Outcome, ApplyEvaluation.Exact(x.Score), "CheckWithAppeals")).ToArray());
     }
     public async Task<PublishedAppealBasis> BasisAsync(Guid result, long expectedVersion, CancellationToken ct)
     {

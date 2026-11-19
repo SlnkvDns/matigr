@@ -40,7 +40,7 @@
 
 `GET /internal/v1/results/{resultId}/appeal-basis?expectedResultVersion={version}`
 
-Владелец — Results; потребитель — Appeals под сервисным удостоверением. `200` возвращает только опубликованное актуальное основание: resultId, resultVersion, tournamentId/teamId/taskId, solutionId/materialVersionId, sourceCheckId, decisionOrigin, outcome, scoreRuleVersion, publicationId, publishedAt и publicationState=Published. Не возвращает материал, assignment token или право подать апелляцию. Appeals самостоятельно проверяет команду, окно и постоянную квоту. В своём снимке Appeals сохраняет sourceCheckId как baseCheckId.
+Владелец — Results; потребитель — Appeals под сервисным удостоверением. `200` возвращает только опубликованное актуальное основание: resultId, resultVersion, tournamentId/teamId/taskId, solutionId/materialVersionId, sourceCheckId, decisionOrigin, outcome, scoreRuleVersion, publicationId, publishedAt и publicationState=Published. Не возвращает материал, assignment token или право подать апелляцию. Appeals самостоятельно проверяет команду, окно и постоянную квоту. Первичный вердикт после передачи старшему допускает первую подачу на общих основаниях. В своём снимке Appeals сохраняет sourceCheckId как baseCheckId.
 
 `409 ResultVersionConflict` — актуальная версия отличается; `404 PublishedResultNotFound` — опубликованного результата нет; `503`/таймаут — не разрешать подачу по кэшу, вернуть временную ошибку без расходования квоты. HTTP выполняется до транзакции регистрации. В обычном MVP до первой апелляции нет легального конкурентного изменения результата той же задачи; аномалию всё равно защищают версии и последующий CAS Results. Чтение по HTTP само по себе не создаёт распределённую транзакцию.
 

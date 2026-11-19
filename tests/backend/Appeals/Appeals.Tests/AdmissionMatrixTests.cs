@@ -9,13 +9,22 @@ public class AdmissionMatrixTests
     [InlineData("tournament", "Forbidden")]
     [InlineData("closed", "WindowClosed")]
     [InlineData("quota", "AlreadyAppealed")]
-    [InlineData("senior", "BaseNotAppealable")]
     public void Admission_rejects_only_confirmed_business_restrictions(string change, string code)
     {
         var b = AppealTests.Basis(); var team = change == "team" ? Guid.NewGuid() : b.TeamId;
         var window = new SubmissionWindow(change == "tournament" ? Guid.NewGuid() : b.TournamentId, change != "closed");
-        if (change == "senior") b = b with { Origin = DecisionOrigin.SeniorEscalation };
         Assert.Equal(code, Assert.Throws<AppealRuleException>(() => Appeal.Register(Guid.NewGuid(), b, team, window, AppealTests.Now, change == "quota")).Message);
+    }
+    [Theory]
+    [InlineData(Outcome.Incorrect)]
+    [InlineData(Outcome.Correct)]
+    public void First_appeal_can_be_registered_for_a_senior_verdict(Outcome outcome)
+    {
+        var basis = AppealTests.Basis() with { Origin = DecisionOrigin.SeniorEscalation, Outcome = outcome };
+        var window = new SubmissionWindow(basis.TournamentId);
+        Assert.Equal(AppealState.Registered, Appeal.Register(Guid.NewGuid(), basis, basis.TeamId, window, AppealTests.Now, false).State);
+        Assert.Equal("AlreadyAppealed", Assert.Throws<AppealRuleException>(() =>
+            Appeal.Register(Guid.NewGuid(), basis, basis.TeamId, window, AppealTests.Now, true)).Message);
     }
     [Theory]
     [InlineData(AppealState.Registered)]

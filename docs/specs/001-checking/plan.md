@@ -92,7 +92,7 @@ CHK-BE-03: внутренний bootstrap принятых ссылок/Initial 
 
 Initial: expectedResultVersion=0 и без appeal-полей. Appeal: resultId, expectedResultVersion, baseCheckId, исходный publicationId, appealId/requestId и selectedReviewerId обязательны. SeniorEscalation в обоих kind требует escalationId. reviewRevision — отдельный номер рассмотрения, его пропуски не доказывают потерю событий. Полные payload/envelope — [канонический контракт](../../architecture/event-contracts.md).
 
-Повтор requestId возвращает прежний исход даже после смены занятости/передачи. Новый requestId после ReviewerBusy допустим внутри той же апелляции. Если успешный Check уже существует, согласованный повтор основания с новой попыткой возвращает существующий Check без смены исполнителя; конфликт основания не создаёт второй Check и не обходит запрет SeniorEscalation.
+Повтор requestId возвращает прежний исход даже после смены занятости/передачи. Новый requestId после ReviewerBusy допустим внутри той же апелляции. Если успешный Check уже существует, согласованный повтор основания с новой попыткой возвращает существующий Check без смены исполнителя; конфликт основания не создаёт второй Check. Завершённая первичная проверка с SeniorEscalation допустима как основание.
 
 ## 6. Транзакционные границы и конкуренция
 

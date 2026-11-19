@@ -28,7 +28,7 @@ async function setup(state = 'Assigned', lost = false) {
   vi.stubGlobal('fetch', fetcher);
   render(<SessionProvider provider={{ choices: [], select: async () => credential() }}><Login /><PrivateSessionBoundary><CheckingPage /></PrivateSessionBoundary></SessionProvider>);
   fireEvent.click(screen.getByText('Войти'));
-  await screen.findByText(state === 'SeniorAssigned' ? 'Окончательный вердикт старшего' : 'Назначена вам');
+  await screen.findByText(state === 'SeniorAssigned' ? 'Назначена вам из очереди старшего жюри' : 'Назначена вам');
   return { posts, fetcher };
 }
 

@@ -54,8 +54,8 @@ internal sealed class RecheckRequests(CheckingDbContext db, StorageProtection pr
         var basis = await db.Checks.AsNoTracking().SingleOrDefaultAsync(x => x.CheckId == request.BaseCheckId, ct);
         if (basis is null || basis.State != CheckState.Completed) return new(false, "BaseCheckDependencyUnavailable");
         var reason = s.TournamentId != request.TournamentId || s.TeamId != request.TeamId || s.TaskId != request.TaskId
-            || s.MaterialVersionId != request.MaterialVersionId || basis.SolutionId != request.SolutionId || basis.Outcome != request.BaseOutcome
-            ? "BasisConflict" : basis.Origin == DecisionOrigin.SeniorEscalation ? "BaseNotAppealable" : null;
+            || s.MaterialVersionId != request.MaterialVersionId || basis.SolutionId != request.SolutionId
+            || basis.Kind != CheckKind.Initial || basis.Outcome != request.BaseOutcome ? "BasisMismatch" : null;
         if (reason is null && !await db.ReviewerScopes.AnyAsync(x => x.ReviewerId == request.RequestedReviewerId && x.TournamentId == request.TournamentId && x.Role == ReviewerRole.Reviewer, ct)) reason = "ReviewerScopeConflict";
         var existing = await db.Checks.AsNoTracking().SingleOrDefaultAsync(x => x.AppealId == request.AppealId, ct);
         string response; Guid? checkId = null;
@@ -81,9 +81,7 @@ internal sealed class RecheckRequests(CheckingDbContext db, StorageProtection pr
         }
         var baseAssignment = await db.Assignments.AsNoTracking().SingleAsync(x => x.AssignmentId == basis!.CurrentAssignmentId, ct);
         var snapshot = new SolutionReference(s.SolutionId, s.TournamentId, s.TeamId, s.TaskId, s.MaterialVersionId, s.MaterialRef, s.AcceptedAt, s.SourceVersion);
-        var baseCheck = Check.RestoreAssigned(basis.CheckId, snapshot, basis.Kind, basis.ReviewRevision, basis.Version - 1, basis.EscalationId,
-            basis.Kind == CheckKind.Initial ? null : new(basis.AppealId!.Value, basis.RecheckRequestId!.Value, basis.ResultId!.Value,
-                basis.ExpectedResultVersion!.Value, basis.BaseCheckId!.Value, basis.BasePublicationId!.Value, basis.SelectedReviewerId!.Value, basis.BaseOutcome!.Value),
+        var baseCheck = Check.RestoreAssigned(basis.CheckId, snapshot, basis.Kind, basis.ReviewRevision, basis.Version - 1, basis.EscalationId, null,
             baseAssignment.AssignmentId, new(baseAssignment.ReviewerId, basis.TournamentId, baseAssignment.Role), baseAssignment.StartedAt);
         baseCheck.Complete(baseAssignment.AssignmentId, baseAssignment.ReviewerId, basis.Outcome!.Value, basis.CompletedAt!.Value);
         var revision = checked(await db.Checks.Where(x => x.SolutionId == s.SolutionId).MaxAsync(x => x.ReviewRevision, ct) + 1);

@@ -4,6 +4,7 @@ import { ApiError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
+import { useStandingsLabels } from '../results/useStandingsLabels';
 import './checking.css';
 
 type Assignment = components['schemas']['MyAssignment'];
@@ -15,6 +16,7 @@ export function CheckingPage() {
   const profile = snapshot.profile;
   const permitted = profile?.roles.some(r => r === 'Jury' || r === 'Senior');
   const [tournament, setTournament] = useState(profile?.tournamentIds[0] ?? '');
+  const standings = useStandingsLabels(permitted ? tournament : '');
   const [queue, setQueue] = useState<'general' | 'senior'>('general');
   const [page, setPage] = useState<Queue>();
   const [current, setCurrent] = useState<Assignment>();
@@ -124,8 +126,10 @@ export function CheckingPage() {
       {busy && <p role="status">Загрузка…</p>}
       <section aria-label="Текущая проверка"><h2>Ваша проверка</h2>
         {current ? <>
-          <p>Задача: {current.check.taskId}</p><p>Команда: {current.check.teamId}</p>
-          <p>{current.check.state === 'SeniorAssigned' ? 'Окончательный вердикт старшего' : 'Назначена вам'}</p>
+          <p>{standings?.tasks.find(task => task.taskId === current.check.taskId)?.name ?? `Задача ${current.check.taskId}`}</p>
+          <p>Команда: {standings?.teams.find(team => team.teamId === current.check.teamId)?.name ?? current.check.teamId}</p>
+          <p>{current.check.state === 'SeniorAssigned' ? 'Назначена вам из очереди старшего жюри'
+            : current.check.kind === 'Appeal' ? 'Ваша перепроверка по апелляции' : 'Назначена вам'}</p>
           <button disabled={busy || !!pending || !loaded} onClick={() => void openMaterial()}>Открыть материал</button>
           {material !== undefined && <pre aria-label="Материал решения">{material}</pre>}
           <div className="checking-actions">
@@ -137,7 +141,9 @@ export function CheckingPage() {
       </section>
       <section aria-label="Очередь проверок"><h2>Доступные проверки</h2>
         <p>Очередь не резервирует работу. Назначение подтверждает сервер.</p>
-        <ul>{page?.items.map(item => <li key={item.checkId}>Задача {item.taskId} · команда {item.teamId}</li>)}</ul>
+        <ul>{page?.items.map(item => <li key={item.checkId}>
+          {standings?.tasks.find(task => task.taskId === item.taskId)?.name ?? `Задача ${item.taskId}`} · команда {standings?.teams.find(team => team.teamId === item.teamId)?.name ?? item.teamId}
+        </li>)}</ul>
         {page?.items.length === 0 && <p>Очередь пуста.</p>}
         {page?.nextCursor && <button disabled={busy || !!pending} onClick={() => void load(page.nextCursor!)}>Следующая страница</button>}
         <button disabled={busy || !!current || !!pending || !loaded} onClick={() => void command({ path: '/me/assignments/next',

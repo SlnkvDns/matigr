@@ -1,0 +1,71 @@
+.appeals-workspace { display: grid; gap: 18px; margin-top: 32px; }
+.appeals-workspace .api-problem { margin: 0; }
+.appeals-panel {
+  padding: 24px;
+  background: #fff;
+  border: 1px solid #dce2d9;
+  border-radius: 14px;
+}
+.appeals-panel h2 { margin: 0; font-size: 21px; font-weight: 650; letter-spacing: -.35px; }
+.appeals-panel p { margin: 8px 0 0; color: #526158; font-size: 14px; line-height: 1.55; }
+.appeals-selection { background: #edf3ea; border-color: #ccd9cb; }
+.appeals-panel-heading, .appeals-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px 20px;
+}
+.appeals-item-name { overflow-wrap: anywhere; }
+.appeals-selection .appeals-item-name { color: #263b31; font-weight: 650; }
+.appeals-feedback {
+  margin-top: 16px;
+  padding-left: 12px;
+  border-left: 3px solid #748f79;
+  line-height: 1.5;
+  font-weight: 600;
+}
+.appeals-feedback p { margin-top: 4px; font-weight: 400; }
+.appeals-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; }
+.appeals-actions:empty { display: none; }
+.appeals-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  flex-shrink: 0;
+  padding: 8px 14px;
+  border: 1px solid #28553d;
+  border-radius: 7px;
+  background: #28553d;
+  color: #fff;
+  font: 600 14px/1.4 Inter, "Segoe UI", system-ui, sans-serif;
+  text-decoration: none;
+  text-align: center;
+  cursor: pointer;
+}
+.appeals-button:hover { background: #1e4430; border-color: #1e4430; }
+.appeals-button.appeals-secondary { background: #fff; border-color: #b7c6b7; color: #28553d; }
+.appeals-button.appeals-secondary:hover { background: #e8eee5; }
+.appeals-button:disabled { background: #e8ede5; border-color: #dce2d9; color: #5d6a61; cursor: default; }
+.appeals-list { list-style: none; padding: 0; margin: 16px 0 0; }
+.appeals-list:empty { margin: 0; }
+.appeals-list li { padding: 14px 0; border-top: 1px solid #e0e6dd; }
+.appeals-list li:last-child { padding-bottom: 0; }
+.appeals-list time { display: block; margin-top: 5px; color: #526158; font-size: 13px; }
+.appeals-status {
+  align-self: flex-start;
+  padding: 5px 10px;
+  border-radius: 7px;
+  background: #e9efe6;
+  color: #28553d;
+  font-size: 13px;
+  line-height: 1.4;
+  font-weight: 600;
+}
+.appeals-panel .appeals-empty { margin-top: 18px; padding: 14px 16px; background: #f5f7f3; border-radius: 8px; }
+@media (max-width: 650px) {
+  .appeals-workspace { margin-top: 24px; }
+  .appeals-panel { padding: 18px; }
+  .appeals-panel-heading, .appeals-list li { align-items: flex-start; flex-direction: column; }
+  .appeals-list .appeals-button { align-self: stretch; }
+}

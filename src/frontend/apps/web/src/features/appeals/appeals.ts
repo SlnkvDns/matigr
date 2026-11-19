@@ -1,13 +1,21 @@
 import type { components } from '../../shared/api/generated/appeals';
 import { ApiProtocolError } from '../../shared/api/http';
+import type { Standings } from '../results/standings';
 export type AppealView = components['schemas']['AppealView'];
 export type AppealSummary = components['schemas']['AppealSummary'];
 export const states: Record<AppealSummary['state'], string> = {
-  Registered: 'Ожидает ручного выбора жюри', AcceptedAwaitingRecheck: 'Ожидает подтверждения назначения', RecheckPending: 'Идёт перепроверка',
-  AwaitingSeniorReview: 'Ожидает старшего жюри', AwaitingResultApplication: 'Ожидает применения результата', Closed: 'Завершена', NeedsResolution: 'Требуется разбор конфликта',
+  Registered: 'В очереди на перепроверку', AcceptedAwaitingRecheck: 'Ожидает назначения', RecheckPending: 'На перепроверке',
+  AwaitingSeniorReview: 'Ожидает старшего жюри', AwaitingResultApplication: 'Ожидает публикации результата', Closed: 'Завершена', NeedsResolution: 'Требует внимания',
 };
 export const exactVersion = (v: unknown): v is string => typeof v === 'string' && /^[1-9][0-9]*$/.test(v);
 export function reviewLabel(v: AppealView): string { return v.reviewState === 'SeniorAssigned' ? 'Перепроверка назначена старшему жюри' : v.reviewState === 'SeniorQueued' ? 'Перепроверка в очереди старшего жюри' : states[v.state]; }
+export function taskName(item: AppealSummary, standings: Standings | undefined) {
+  return standings?.tasks.find(task => task.taskId === item.taskId)?.name ?? `Задача ${item.taskId}`;
+}
+export function appealName(item: AppealSummary, standings: Standings | undefined) {
+  const name = standings?.teams.find(team => team.teamId === item.teamId)?.name;
+  return `${name ? `Команда «${name}»` : `Команда ${item.teamId}`} · ${taskName(item, standings)}`;
+}
 const record = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
 const text = (v: unknown) => typeof v === 'string' && v.length > 0;
 const fields = ['appealId', 'tournamentId', 'teamId', 'taskId', 'state', 'submittedAt', 'version'];

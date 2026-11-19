@@ -19,10 +19,11 @@ export function readTeamResults(value: unknown, tournament: string): Mine {
   return value as unknown as Mine;
 }
 
-export function TeamResults({ tournament, snapshotVersion }: { tournament: string; snapshotVersion?: string | undefined }) {
-  return <PrivateSessionBoundary><PrivateResults tournament={tournament} snapshotVersion={snapshotVersion} /></PrivateSessionBoundary>;
+type TeamResultsProps = { tournament: string; snapshotVersion?: string | undefined; tasks?: components['schemas']['StandingsSnapshot']['tasks'] | undefined };
+export function TeamResults(props: TeamResultsProps) {
+  return <PrivateSessionBoundary><PrivateResults {...props} /></PrivateSessionBoundary>;
 }
-function PrivateResults({ tournament, snapshotVersion }: { tournament: string; snapshotVersion?: string | undefined }) {
+function PrivateResults({ tournament, snapshotVersion, tasks }: TeamResultsProps) {
   const { session, snapshot } = useSession();
   const allowed = snapshot.profile?.roles.includes('Team') && snapshot.profile.tournamentIds.includes(tournament);
   const [mine, setMine] = useState<Mine>(); const [error, setError] = useState<unknown>();
@@ -51,7 +52,7 @@ function PrivateResults({ tournament, snapshotVersion }: { tournament: string; s
     {error !== undefined && <ApiProblemNotice error={error} />}
     {mine && mine.results.length === 0 && <p>Опубликованных результатов пока нет. Ожидайте завершения проверки.</p>}
     {mine && mine.results.length > 0 && <ul>{mine.results.map(r => <li key={r.taskId}>
-      Задача {r.taskId}: {r.outcome === 'Correct' ? 'Правильно' : 'Неправильно'}, баллы: {r.score}.{' '}
+      {tasks?.find(task => task.taskId === r.taskId)?.name ?? `Задача ${r.taskId}`}: {r.outcome === 'Correct' ? 'Правильно' : 'Неправильно'}, баллы: {r.score}.{' '}
       <Link to={`/appeals?${new URLSearchParams({ tournamentId: tournament, resultId: r.resultId, expectedResultVersion: r.resultVersion })}`}>Перейти к апелляции</Link>
     </li>)}</ul>}
     {mine && <p>В списке показаны опубликованные результаты. Остальные задачи ожидают проверки. Допустимость подачи проверяет сервис апелляций.</p>}

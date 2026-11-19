@@ -35,7 +35,7 @@ export function ResultsPage() {
         </table>
       </div>}
       {snapshot && <p>«—» означает, что результат ещё ожидается. Равные суммы делят место.</p>}
-      <TeamResults tournament={tournament} snapshotVersion={snapshot?.snapshotVersion} />
+      <TeamResults tournament={tournament} snapshotVersion={snapshot?.snapshotVersion} tasks={snapshot?.tasks} />
     </Page>
   );
 }

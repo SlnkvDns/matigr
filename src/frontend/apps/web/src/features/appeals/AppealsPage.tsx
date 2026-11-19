@@ -4,22 +4,28 @@ import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
-import { exactVersion, readList, readView, reviewLabel, states } from './appeals';
-import type { AppealSummary, AppealView } from './appeals';
+import { exactVersion, readList, readView, reviewLabel, taskName } from './appeals';
+import type { AppealView } from './appeals';
+import type { Standings } from '../results/standings';
+import { useStandingsLabels } from '../results/useStandingsLabels';
 import { JuryAppeals } from './JuryAppeals';
+import './appeals.css';
 
 export function AppealsPage() {
   const { snapshot } = useSession(); const [query] = useSearchParams();
   const tournament = query.get('tournamentId') ?? snapshot.profile?.tournamentIds[0] ?? '';
-  return <Page title="Апелляции" description="Обращения команд по опубликованным результатам.">
-    {snapshot.profile?.roles.includes('Team') ? <TeamAppeals tournament={tournament} />
-      : snapshot.profile?.roles.some(r => r === 'Jury' || r === 'Senior') ? <JuryAppeals tournament={tournament} /> : <p>Для подачи апелляции войдите как команда.</p>}
+  const team = snapshot.profile?.roles.includes('Team');
+  const jury = snapshot.profile?.roles.some(r => r === 'Jury' || r === 'Senior');
+  const names = useStandingsLabels(team || jury ? tournament : '');
+  return <Page title="Апелляции" description={jury ? 'Возьмите обращение команды и перепроверьте её решение.' : 'Подайте апелляцию по опубликованному результату и следите за её статусом.'}>
+    {team ? <TeamAppeals tournament={tournament} standings={names} />
+      : jury ? <JuryAppeals tournament={tournament} standings={names} /> : <p>Для подачи апелляции войдите как команда.</p>}
   </Page>;
 }
-function TeamAppeals({ tournament }: { tournament: string }) {
+function TeamAppeals({ tournament, standings }: { tournament: string; standings: Standings | undefined }) {
   const { session, snapshot } = useSession(); const team = snapshot.profile!.teamId!;
   const [query] = useSearchParams(); const resultId = query.get('resultId') ?? ''; const version = query.get('expectedResultVersion') ?? '';
-  const [items, setItems] = useState<AppealSummary[]>([]); const [existing, setExisting] = useState<AppealView>();
+  const [existing, setExisting] = useState<AppealView>();
   const [details, setDetails] = useState<AppealView[]>([]);
   const latest = useRef(new Map<string, AppealView>());
   const [error, setError] = useState<unknown>(); const [loading, setLoading] = useState(false); const [sending, setSending] = useState(false);
@@ -33,16 +39,20 @@ function TeamAppeals({ tournament }: { tournament: string }) {
       const client = session.workspace().client('/api/v1/appeals');
       const response = await client.get<unknown>(`/me?${new URLSearchParams({ tournamentId: tournament })}`, { signal: abort.signal });
       const list = readList(response.data, tournament, team);
-      const details = await Promise.all(list.map(async item => readView((await client.get<unknown>(`/${encodeURIComponent(item.appealId)}`, { signal: abort.signal })).data, tournament)));
+      const details = await Promise.all(list.map(async ({ appealId }) => {
+        const response = await client.get<unknown>(`/${encodeURIComponent(appealId)}`, { signal: abort.signal });
+        const view = readView(response.data, tournament);
+        if (view.appealId !== appealId || view.teamId !== team) throw new ApiProtocolError();
+        return view;
+      }));
       if (generation !== sequence.current || abort.signal.aborted) return;
-      if (details.some(d => d.teamId !== team)) throw new ApiProtocolError();
       const stable = details.map(d => { const old = latest.current.get(d.appealId); const value = old && BigInt(old.version) > BigInt(d.version) ? old : d; latest.current.set(d.appealId, value); return value; });
-      setItems(list.map(i => { const d = latest.current.get(i.appealId)!; return { ...i, state: d.state, version: d.version }; })); setDetails(stable); setExisting(stable.find(d => d.resultId === resultId)); setReady(true);
+      setDetails(stable); setExisting(stable.find(d => d.resultId === resultId)); setReady(true);
     } catch (e) { if (generation === sequence.current && !abort.signal.aborted) setError(e); }
     finally { if (generation === sequence.current && !abort.signal.aborted) setLoading(false); }
   }
   useEffect(() => {
-    setExisting(undefined); setItems([]); setDetails([]); latest.current.clear(); setNotice(''); setBlocked(false); setRetry(false); setSending(false); pending.current = undefined; inFlight.current = false;
+    setExisting(undefined); setDetails([]); latest.current.clear(); setNotice(''); setBlocked(false); setRetry(false); setSending(false); pending.current = undefined; inFlight.current = false;
     if (tournament) void load();
     return () => { ++sequence.current; reads.current?.abort(); action.current?.abort(); };
   }, [tournament, resultId, version]);
@@ -62,29 +72,42 @@ function TeamAppeals({ tournament }: { tournament: string }) {
       if (generation !== sequence.current || abort.signal.aborted) return;
       const value = readView(response.data, tournament);
       if (response.status !== 201 || value.teamId !== team || value.resultId !== resultId) throw new ApiProtocolError();
-      setExisting(value); pending.current = undefined; setRetry(false); setNotice('Апелляция зарегистрирована. Жюри выберет её вручную.'); await load(true);
+      setExisting(value); pending.current = undefined; setRetry(false); setNotice('Апелляция подана. Она появилась в очереди жюри.'); await load(true);
     } catch (e) {
       if (generation !== sequence.current || abort.signal.aborted) return;
       setError(e); setRetry(true);
-      if (e instanceof ApiError && ['WindowClosed', 'BaseNotAppealable'].includes(e.problem?.code ?? '')) setBlocked(true);
+      if (e instanceof ApiError && e.problem?.code === 'WindowClosed') setBlocked(true);
       if (e instanceof ApiError && e.problem?.code === 'AlreadyAppealed') await load(true);
     } finally { if (!abort.signal.aborted) { inFlight.current = false; setSending(false); } }
   }
-  return <>
-    <Link to={`/results?${new URLSearchParams({ tournamentId: tournament })}`}>К результатам команды</Link>
-    <button disabled={loading || sending} onClick={() => void load()}>Обновить мои апелляции</button>
-    {loading && <p role="status">Загрузка апелляций…</p>}{error !== undefined && <ApiProblemNotice error={error} />}{notice && <p role="status">{notice}</p>}
-    {resultId && exactVersion(version) ? <section aria-label="Подача апелляции"><h2>Апелляция по выбранному результату</h2>
-      {existing ? <p>Апелляция по этой задаче уже подана: {states[existing.state]}. Новая версия результата не разрешает вторую подачу.</p>
-        : <><p>Подача доступна после публикации и до ручного завершения турнира. Допустимость проверит сервер.</p>
-          <button disabled={!ready || loading || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button></>}
-    </section> : <p>Выберите опубликованный результат на странице команды.</p>}
-    <section aria-label="Мои апелляции"><h2>Мои апелляции</h2>{ready && items.length === 0 && <p>Апелляций пока нет.</p>}
-      <ul>{items.map(item => <li key={item.appealId}>Задача {item.taskId}: {details.find(d => d.appealId === item.appealId) ? reviewLabel(details.find(d => d.appealId === item.appealId)!) : states[item.state]}
-        {details.find(d => d.appealId === item.appealId)?.finalPublicationId && <p>Итоговая публикация: {details.find(d => d.appealId === item.appealId)!.finalPublicationId}</p>}
-        {item.state === 'AwaitingResultApplication' && <p>Вердикт получен. Ожидаем подтверждения публикации Results.</p>}
-        {item.state === 'NeedsResolution' && <p>Результат не применён. Исходное основание сохранено; требуется разбор конфликта.</p>}
+  return <div className="appeals-workspace">
+    {error !== undefined && <ApiProblemNotice error={error} />}
+    <section aria-label="Подача апелляции" className="appeals-panel appeals-selection">
+      <h2>Подать апелляцию</h2>
+      {notice && <p role="status">{notice}</p>}
+      {resultId && exactVersion(version)
+        ? existing ? <p><strong>{taskName(existing, standings)}.</strong> Апелляция уже подана. По каждой задаче можно обратиться один раз.</p>
+          : <p>Команда может один раз обжаловать опубликованный результат по задаче до завершения турнира.</p>
+        : <p>Выберите задачу с опубликованным результатом на странице вашей команды.</p>}
+      <div className="appeals-actions">
+        {resultId && exactVersion(version) && !existing && <button className="appeals-button" disabled={!ready || loading || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button>}
+        <Link className="appeals-button appeals-secondary" to={`/results?${new URLSearchParams({ tournamentId: tournament })}`}>К результатам команды</Link>
+      </div>
+    </section>
+    <section aria-label="Мои апелляции" className="appeals-panel">
+      <div className="appeals-panel-heading">
+        <h2>Мои апелляции</h2>
+        <button className="appeals-button appeals-secondary" disabled={loading || sending} onClick={() => void load()}>Обновить мои апелляции</button>
+      </div>
+      {loading && details.length === 0 && <p role="status" className="appeals-empty">Загрузка апелляций…</p>}
+      {ready && details.length === 0 && <p className="appeals-empty">Апелляций пока нет.</p>}
+      <ul className="appeals-list">{details.map(item => <li key={item.appealId}>
+        <div><strong className="appeals-item-name">{taskName(item, standings)}</strong>
+          {item.state === 'Closed' && <p>Итог перепроверки опубликован в результатах команды.</p>}
+          {item.state === 'NeedsResolution' && <p>Опубликованный результат пока сохраняется. Апелляция требует разбора.</p>}
+        </div>
+        <span className="appeals-status">{reviewLabel(item)}</span>
       </li>)}</ul>
     </section>
-  </>;
+  </div>;
 }

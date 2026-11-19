@@ -46,22 +46,31 @@ public partial class StorageTests
         Assert.False(await db.Inbox.AnyAsync(x => x.MessageId == message)); Assert.False(await db.Outbox.AnyAsync(x => x.CorrelationId == request.AppealId));
         Assert.True((await Rechecks(db).HandleAsync(request, message, "retry")).Applied);
     }
-    private async Task<RecheckRequest> RecheckSeed()
+    private async Task<RecheckRequest> RecheckSeed(bool seniorVerdict = false)
     {
         var seed = await Seed(); var reviewer = Guid.NewGuid(); await SeedScope(reviewer, seed.TournamentId);
         var actor = Actor(reviewer, seed.TournamentId);
         await using var db = fixture.Open();
         var a = (await Work(db).TakeNextAsync(actor, seed.TournamentId, "general", "base", "base", default)).Assignment!;
-        await Work(db).TransitionAsync(actor, seed.CheckId, Guid.Parse(a.AssignmentId), a.Capability, "Correct", 2, "base-complete", "base", default);
+        if (seniorVerdict)
+        {
+            await Work(db).TransitionAsync(actor, seed.CheckId, Guid.Parse(a.AssignmentId), a.Capability, null, 2, "base-refuse", "base", default);
+            var senior = Guid.NewGuid(); await SeedScope(senior, seed.TournamentId, ReviewerRole.Senior);
+            actor = Actor(senior, seed.TournamentId);
+            a = (await Work(db).TakeNextAsync(actor, seed.TournamentId, "senior", "base-senior", "base", default)).Assignment!;
+        }
+        await Work(db).TransitionAsync(actor, seed.CheckId, Guid.Parse(a.AssignmentId), a.Capability, "Correct", long.Parse(a.Check.Version), "base-complete", "base", default);
         var s = await db.SolutionReferences.AsNoTracking().SingleAsync(x => x.SolutionId == seed.SolutionId);
         return new(Guid.NewGuid(), Guid.NewGuid(), s.SolutionId, s.MaterialVersionId, s.TournamentId, s.TeamId, s.TaskId,
             Guid.NewGuid(), 1, Guid.NewGuid(), seed.CheckId, reviewer, CheckOutcome.Correct, DateTimeOffset.UtcNow, DateTimeOffset.UtcNow);
     }
     private RecheckRequests Rechecks(CheckingDbContext db) => new(db, new(fixture.KeyPath), TimeProvider.System);
-    [Fact]
-    public async Task Request_assigns_original_reviewer_once_and_replays_before_busy_or_later_state()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Request_assigns_selected_reviewer_once_and_replays_before_busy_or_later_state(bool seniorVerdict)
     {
-        var request = await RecheckSeed(); await using var db = fixture.Open(); var service = Rechecks(db);
+        var request = await RecheckSeed(seniorVerdict); await using var db = fixture.Open(); var service = Rechecks(db);
         Assert.True((await service.HandleAsync(request, Guid.NewGuid(), "request")).Applied);
         var row = await db.Checks.SingleAsync(x => x.AppealId == request.AppealId);
         var a = await db.Assignments.SingleAsync(x => x.CheckId == row.CheckId);

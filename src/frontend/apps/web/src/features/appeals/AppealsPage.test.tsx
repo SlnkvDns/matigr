@@ -15,10 +15,10 @@ it('protected refresh preserves a newer Closed publication when the server later
     const d = old ? view() : { ...view(), state: 'Closed', version: '9007199254740993', finalPublicationId: 'final-publication' };
     return jsonResponse(String(url).includes('/me?') ? { tournamentId: 't', items: [{ ...summary(), state: d.state, version: d.version }] } : d);
   }));
-  await screen.findByText('Итоговая публикация: final-publication'); old = true;
+  await screen.findByText('Итог перепроверки опубликован в результатах команды.'); old = true;
   fireEvent.click(screen.getByText('Обновить мои апелляции'));
   await waitFor(() => expect(screen.getByText('Обновить мои апелляции')).toBeEnabled());
-  expect(screen.getByText('Итоговая публикация: final-publication')).toBeInTheDocument();
+  expect(screen.getByText('Итог перепроверки опубликован в результатах команды.')).toBeInTheDocument();
   expect(screen.queryByRole('button', { name: 'Подать апелляцию' })).toBeNull();
 });
 function summary(v = view()) { const { resultId: _r, resultVersion: _v, baseCheckId: _c, basePublicationId: _p, baseOutcome: _o, ...s } = v; return s; }
@@ -45,7 +45,7 @@ it('double click sends one operation; uncertain response retries original body/k
   expect(posts).toHaveLength(1);
   await act(async () => uncertain.reject(new TypeError('lost response')));
   fireEvent.click(await screen.findByRole('button', { name: 'Повторить подачу' }));
-  await screen.findByText(/Апелляция зарегистрирована/);
+  await screen.findByText(/Апелляция подана/);
   expect(posts).toHaveLength(2); expect(posts[0]!.body).toBe(posts[1]!.body);
   expect(new Headers(posts[0]!.headers).get('Idempotency-Key')).toBe(new Headers(posts[1]!.headers).get('Idempotency-Key'));
   expect(fetcher.mock.calls.every(([url]) => !String(url).includes('/checking') && !String(url).includes('/claim'))).toBe(true);
@@ -53,7 +53,7 @@ it('double click sends one operation; uncertain response retries original body/k
 it('an existing appeal hides the form even when a new result version is selected', async () => {
   const fetcher = vi.fn(async (url: RequestInfo | URL) => jsonResponse(String(url).includes('/me?') ? { tournamentId: 't', items: [summary()] } : view()));
   setup(fetcher, '9007199254740993');
-  await screen.findByText(/Новая версия результата не разрешает вторую подачу/);
+  await screen.findByText(/По каждой задаче можно обратиться один раз/);
   expect(screen.queryByRole('button', { name: 'Подать апелляцию' })).toBeNull();
 });
 it('switching subject clears pending action and late successful response cannot restore private content', async () => {
@@ -63,9 +63,9 @@ it('switching subject clears pending action and late successful response cannot 
   fireEvent.click(screen.getByRole('button', { name: 'Подать апелляцию' })); fireEvent.click(screen.getByText('Logout'));
   expect(screen.queryByRole('region', { name: 'Мои апелляции' })).toBeNull();
   await act(async () => pending.resolve(jsonResponse(view(), 201)));
-  expect(screen.queryByText(/Апелляция зарегистрирована/)).toBeNull();
+  expect(screen.queryByText(/Апелляция подана/)).toBeNull();
 });
-it.each(['WindowClosed', 'BaseNotAppealable', 'ResultVersionConflict', 'AlreadyAppealed', 'ResultsUnavailable'])('shows server admission error %s without automatic rebasing or a new key', async code => {
+it.each(['WindowClosed', 'ResultVersionConflict', 'AlreadyAppealed', 'ResultsUnavailable'])('shows server admission error %s without automatic rebasing or a new key', async code => {
   let duplicate = false;
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {
     if (init?.method === 'POST') { duplicate = code === 'AlreadyAppealed'; return new Response(JSON.stringify({ type: 'about:blank', title: 'Error', status: code === 'ResultsUnavailable' ? 503 : 409,
@@ -75,8 +75,8 @@ it.each(['WindowClosed', 'BaseNotAppealable', 'ResultVersionConflict', 'AlreadyA
   setup(fetcher); await waitFor(() => expect(screen.getByRole('button', { name: 'Подать апелляцию' })).toBeEnabled());
   fireEvent.click(screen.getByRole('button', { name: 'Подать апелляцию' })); await screen.findByRole('alert');
   expect(fetcher.mock.calls.filter(([, init]) => init?.method === 'POST')).toHaveLength(1);
-  if (code === 'AlreadyAppealed') await screen.findByText(/Новая версия результата/);
-  if (code === 'WindowClosed' || code === 'BaseNotAppealable') expect(screen.getByRole('button', { name: 'Повторить подачу' })).toBeDisabled();
+  if (code === 'AlreadyAppealed') await screen.findByText(/По каждой задаче можно обратиться один раз/);
+  if (code === 'WindowClosed') expect(screen.getByRole('button', { name: 'Повторить подачу' })).toBeDisabled();
 });
 it('rejects foreign-team list and extra private fields in views', () => {
   expect(() => readList({ tournamentId: 't', items: [{ ...summary(), teamId: 'foreign' }] }, 't', 'team')).toThrow();

@@ -40,7 +40,7 @@ test('submit trusts only the authenticated team and current Results basis', asyn
   assert.match(operation.description, /server-side subject/);
   const error = resolveAppealsObject(operation.responses['409']);
   assert.match(error.description, /AlreadyAppealed/);
-  assert.match(error.description, /BaseNotAppealable/);
+  assert.doesNotMatch(error.description, /BaseNotAppealable/);
   assert.match(error.description, /ResultVersionConflict/);
 });
 
