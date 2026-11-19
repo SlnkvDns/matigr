@@ -1,86 +1,70 @@
 # Matigr
 
-Реализация согласованных Checking, Results и Appeals на .NET 10 / PostgreSQL / RabbitMQ и одном React/Vite приложении. Загрузка/приём решений, QR и управление турниром вне MVP.
+Matigr автоматизирует проверку уже принятых решений на математическом турнире. Жюри берёт работу из очереди и выносит вердикт, команды видят баллы и места в общей таблице и могут подать апелляцию. Один интерфейс на React, TypeScript и Vite работает с тремя сервисами на ASP.NET Core и .NET 10. У каждого сервиса своя PostgreSQL, а события передаются через RabbitMQ.
 
-Актуализировано 26 октября 2026 года. Первоначальный MVP завершён: **82/82 задачи**, браузерные V1–V6 приняты. Спецификации/планы одобрены 23 октября, реализация поручена отдельно в тот же день. Production-регистрация и публичное размещение backend не реализованы. [Статус задач и доказательства проверок](docs/implementation/progress.md), [матрица версий](docs/architecture/runtime-baseline.md), [контракты и зависимости](docs/architecture/implementation-contracts.md).
+## Структура репозитория
 
-## Проверка проекта
+| Где смотреть | Что находится внутри |
+| --- | --- |
+| [`src/backend/Matigr.slnx`](src/backend/Matigr.slnx) и [`src/backend/services/`](src/backend/services/) | Решение .NET и сервисы Checking, Results и Appeals. |
+| [`src/frontend/apps/web/`](src/frontend/apps/web/) | Единое веб-приложение. [`app/AppRoutes.tsx`](src/frontend/apps/web/src/app/AppRoutes.tsx) связывает маршруты с [экранами в `features/`](src/frontend/apps/web/src/features/). В [`shared/`](src/frontend/apps/web/src/shared/) находятся HTTP-клиент, типы из OpenAPI, сессия и общие компоненты. |
+| [`contracts/`](contracts/) | OpenAPI для HTTP и JSON Schema для сообщений RabbitMQ. В каталоге есть схемы отправителей, ожидания получателей и ссылки на примеры. |
+| [`infra/compose/`](infra/compose/) и [`infra/fixtures/`](infra/fixtures/) | Docker Compose, параметры RabbitMQ и учебные данные для локального турнира. |
+| [`tests/backend/`](tests/backend/), [`tests/integration/`](tests/integration/), [`tests/contracts/`](tests/contracts/), [`tests/e2e/`](tests/e2e/) | Тесты предметной логики и API, проверки PostgreSQL и брокера, тесты контрактов и сценарии браузерной приёмки. Frontend-тесты `*.test.ts(x)` лежат рядом с кодом. |
+| [`scripts/`](scripts/) и [`.github/workflows/ci.yml`](.github/workflows/ci.yml) | Подготовка локальной среды, команды проверок и их запуск в GitHub Actions. |
+| [`docs/specs/`](docs/specs/) и [`docs/architecture/`](docs/architecture/) | Правила работы каждого сервиса, планы реализации, архитектурные решения и контракты взаимодействия. |
 
-Нужны SDK из global.json, Node из .node-version, npm 10.9.2. Локальный SDK можно разместить в игнорируемом `.tools/dotnet`; системный SDK менять не требуется.
+## Как читать backend
 
-```powershell
-./scripts/check.ps1 -Restore
-```
+Сервисы устроены одинаково. В `*.Api` находятся `Program.cs`, маршруты ASP.NET Core и серверная авторизация. `*.Application` содержит команды и интерфейсы сценариев, `*.Domain` — предметные модели и правила переходов, `*.Infrastructure` — реализации сценариев, EF Core, миграции и интеграции с другими сервисами.
 
-Linux/macOS:
+| Сервис | За что отвечает | С чего начать чтение кода |
+| --- | --- | --- |
+| **Checking** | Очередь принятых работ, выдача работы жюри, доступ к материалу, вердикт и передача старшему. Ведёт также проверки по апелляциям. | [`CheckingHttp.cs`](src/backend/services/Checking/Checking.Api/CheckingHttp.cs) → [`Check.cs`](src/backend/services/Checking/Checking.Domain/Check.cs) → [`CheckingWork.cs`](src/backend/services/Checking/Checking.Infrastructure/Storage/CheckingWork.cs) и [`CheckingTransitions.cs`](src/backend/services/Checking/Checking.Infrastructure/Storage/CheckingTransitions.cs). |
+| **Results** | Применяет вердикты, рассчитывает баллы и места, публикует общую таблицу, выдаёт команде личные результаты. | [Обработка вердикта: `ApplyEvaluation.cs`](src/backend/services/Results/Results.Infrastructure/ApplyEvaluation.cs) → [чтение таблицы: `ResultReads.cs`](src/backend/services/Results/Results.Infrastructure/ResultReads.cs) → [HTTP: `ResultsHttp.cs`](src/backend/services/Results/Results.Api/ResultsHttp.cs). |
+| **Appeals** | Принимает апелляцию на опубликованный результат, позволяет жюри выбрать её на перепроверку и закрывает после подтверждения от Results. | [Подача: `SubmissionEndpoints.cs`](src/backend/services/Appeals/Appeals.Api/SubmissionEndpoints.cs) → [модель `Appeal`](src/backend/services/Appeals/Appeals.Domain/Appeal.cs) → [выбор: `AppealWork.cs`](src/backend/services/Appeals/Appeals.Infrastructure/AppealWork.cs) → [завершение: `FinalProcess.cs`](src/backend/services/Appeals/Appeals.Infrastructure/FinalProcess.cs). |
 
-```sh
-node scripts/check-architecture.mjs
-npm ci --ignore-scripts --no-audit --no-fund
-npm run test:contracts
-npm run check:api
-npm run typecheck:web
-npm run test:web
-npm run build:web
-dotnet restore src/backend/Matigr.slnx --locked-mode
-dotnet build src/backend/Matigr.slnx --no-restore -c Release
-dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
-```
+## Как проходит работа
 
-В CI те же команды. Lock-файлы отслеживаются Git. Ветка реализации — `codex/implementation-v0`; изменения фиксируются отдельными коммитами по проверенным шагам. Исторические результаты: 441 общий тест, отдельно Checking 46 + checkpoint, Results 27 и Appeals 31 PostgreSQL/broker tests; новые изменения требуют подходящих проверок. Readiness не заменяет бизнес-приёмку. Полная история — в [архиве MVP](docs/implementation/progress-mvp-2026-10-24.md).
+1. **Проверка.** Жюри на экране `/checking` берёт одну работу и видит её материал. Checking сохраняет назначение, поэтому после перезагрузки страницы жюри может к нему вернуться. При отказе та же работа переходит в очередь старшего жюри.
+2. **Публикация.** Checking сохраняет вердикт и через RabbitMQ отправляет `CheckCompleted`. Results начисляет стоимость задачи за правильное решение или ноль за неправильное и публикует таблицу с местами. Страница `/results` доступна гостю. SSE сообщает об изменении, после чего интерфейс перечитывает данные по HTTP.
+3. **Апелляция.** До окончания турнира команда может один раз обжаловать опубликованный результат по задаче. При подаче Appeals запрашивает у Results опубликованную версию результата по HTTP. Когда жюри вручную выбирает апелляцию на экране `/appeals`, Appeals отправляет `RecheckRequested`. Checking ведёт перепроверку, Results применяет вердикт, а Appeals закрывает обращение после `ResultEvaluationApplied`, в том числе когда балл остался прежним.
 
-Проверка хранения Checking на отдельной PostgreSQL: `node scripts/check-checking-storage.mjs` после подготовки fixtures/ключа. Команда создаёт и удаляет изолированный тестовый Compose, проверяет миграции/constraints/CAS и восстановление capability отдельным процессом. [Границы хранения и запуск](src/backend/services/Checking/Checking.Infrastructure/Storage/README.md).
+Сервисы взаимодействуют через контракты HTTP и RabbitMQ. Outbox сохраняет исходящее событие вместе с изменением в базе, inbox позволяет обработчикам распознавать повторы доставки. Версия результата защищает публикацию от устаревшей перепроверки. [Контракты взаимодействия](docs/architecture/implementation-contracts.md) · [Транспорт и восстановление доставки](src/backend/transport/README.md).
 
-## Контракты
+Приложение работает с подготовленными материалами турнира. Загрузка решений, QR-идентификация, управление списком турниров и production-регистрация за пределами этой реализации. Для локальной демонстрации предусмотрены тестовые роли. Права на действия проверяют API. [Контракт аутентификации](contracts/authentication.md).
 
-OpenAPI всех трёх сервисов и независимые producer/consumer JSON Schemas описаны в [каталоге контрактов](contracts/README.md), отдельно от Domain/ORM. JWT/dev-вход и сервисная identity — в [authentication.md](contracts/authentication.md). Реализованы очереди/назначение/материал/Complete/Refuse, публикация/таблица/служебное основание, Submit/ручной Claim/process manager/manual end. Runtime schema/routing, inbox/outbox/confirm/ack, no-op/changed/senior/recovery проверены integration и V1–V6. `npm run test:contracts` отдельно проверяет форму/fixtures и не заменяет бизнес-тесты.
+## Локальный запуск
 
-`node scripts/check-checking-work.mjs --restart` проверяет реальный HTTP по OpenAPI и сохранность назначения после рестарта Checking. Перед запуском явно задайте `COMPOSE_PROJECT_NAME` отдельного свежего Compose-проекта с подготовленными fixtures: скрипт создаёт назначения и не сбрасывает данные. Пример проверенного проекта — `matigr-chk-be05-smoke`; поднять его можно через `docker compose -p matigr-chk-be05-smoke -f infra/compose/compose.yaml up -d --build`. Проверка требует свободных локальных портов Compose. CI запускает её после инфраструктурной и identity-проверок на своём свежем стеке.
+Понадобятся Docker с Compose, Node.js 22.14.0 и npm 10.9.2. Для самостоятельной сборки и тестов backend нужен .NET SDK 10.0.402. [Версии инструментов и пути к lock-файлам](docs/architecture/runtime-baseline.md).
 
-## Frontend
-
-```sh
-npm ci --ignore-scripts --no-audit --no-fund
-npm run dev:web
-```
-
-Единое приложение: [http://127.0.0.1:5173](http://127.0.0.1:5173). Реализованы рабочее место жюри/старшего, anonymous таблица с SSE/GET-восстановлением, личные результаты команды, подача/список/ручной выбор апелляций и статусы до Closed/NeedsResolution, включая ожидание старшего. Профиль приходит с сервера, token только в памяти; смена субъекта очищает private state. Тестовый переключатель есть только в dev-сборке, полноценный production-вход требует новой задачи. Проверки: `npm run check:api`, `npm run typecheck:web`, `npm run test:web`, `npm run build:web`. [Устройство frontend](src/frontend/apps/web/README.md).
-
-## Локальная инфраструктура
-
-Сначала проверьте `docker compose ls --all` и выберите нужный проект: разные проекты имеют разные volumes, но используют те же host ports. Команды ниже — подготовка стандартного локального проекта, не сброс существующего. Для сохранённого `matigr-e2e-final` используйте `docker compose -p matigr-e2e-final -f infra/compose/compose.yaml up -d --wait --wait-timeout 180`. Его турнир завершён и очереди разобраны после V6; не открывайте окно и не сбрасывайте квоты ради демонстрации. Backend и Vite запускаются отдельно.
+Для первого запуска из корня репозитория выполните следующее. Если Matigr уже запускался, сначала проверьте имена проектов через `docker compose ls --all`. У разных Compose-проектов отдельные данные, но одинаковые порты на машине.
 
 ```sh
 node scripts/init-local.mjs
 node scripts/prepare-fixtures.mjs
 docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
-node scripts/check-infrastructure.mjs
-node scripts/check-identity.mjs --restart
+npm ci --ignore-scripts --no-audit --no-fund
+npm run dev:web
 ```
 
-Три PostgreSQL не публикуют порты хоста и используют отдельные сети, volumes и credentials. Локальная проверка проверяет все 6 запретов чужих credentials, durable bindings RabbitMQ и готовность всех трёх API. Compose запускает все три API. Results слушает `http://127.0.0.1:5102`, Appeals — `http://127.0.0.1:5103`; Results применяет свои миграции и фиксированный roster/rules seed. Checking слушает `http://127.0.0.1:5101`, RabbitMQ management — `http://127.0.0.1:15672`; пароли случайны, находятся в игнорируемом `.local/secrets`. Приложение после чтения Compose secrets запускается как непривилегированный `app`.
+На свежем стеке откройте таблицу учебного турнира. В панели сессии выберите «Жюри 1», возьмите работу на вкладке «Проверка» и сохраните вердикт. Затем откройте «Таблицу». Чтобы попробовать апелляцию, выберите тестовую команду, чья работа получила опубликованный вердикт обычного жюри. [Таблица учебного турнира](http://127.0.0.1:5173/results?tournamentId=0344e06b-4ea1-582e-bd91-e832719773f2).
 
-Остановить контейнеры с сохранением данных: `docker compose -f infra/compose/compose.yaml down`. Не удаляйте volumes/секреты для обычного перезапуска.
+Vite перенаправляет запросы к Checking, Results и Appeals на локальные порты 5101, 5102 и 5103 соответственно. Секреты первого запуска создаются в игнорируемом каталоге `.local/secrets/`. Материалы из фикстур монтируются для Checking только для чтения. [Настройки веб-приложения](src/frontend/apps/web/README.md) · [Состав учебных данных](infra/fixtures/README.md).
 
-## Фикстуры
+Чтобы остановить стандартный Compose-проект с сохранением данных, выполните `docker compose -f infra/compose/compose.yaml down`. Если при запуске указывали имя проекта, передайте то же имя при остановке. Сохранённый проект `matigr-e2e-final` содержит уже завершённый турнир из браузерной приёмки.
 
-```sh
-node scripts/prepare-fixtures.mjs
-node --test tests/fixtures/fixtures.test.mjs
-```
+## Проверки
 
-[Общий манифест](infra/fixtures/manifest.json) содержит согласованные тестовые стоимости 10/20, стабильные субъекты и шесть уже принятых ссылок на материал. Подготовка сверяет SHA-256 и создаёт устойчивые локальные ключи; материал монтируется в Checking только для чтения. Повтор не меняет ключи. [Границы bootstrap и хранения](infra/fixtures/README.md). Эта команда подготовки не создаёт проверки в БД. В CHK-BE-03 реализован отдельный внутренний bootstrap: Local startup Checking после миграций идемпотентно создаёт ссылки/Initial Check и закрепляет версию/checksum набора.
+В Windows общий набор запускается командой `./scripts/check.ps1 -Restore` из корня. Перед восстановлением зависимостей остановите Vite, если он запущен на Windows. Для Linux и macOS порядок сборки и тестов приведён в [GitHub Actions](.github/workflows/ci.yml).
 
-Проверки Results: `node scripts/check-results-storage.mjs` (изолированные PostgreSQL/RabbitMQ/HTTP), `node scripts/check-results-http.mjs` (живой Compose/OpenAPI). [Хранение, применение и service auth](src/backend/services/Results/Results.Infrastructure/README.md). Appeals: `node scripts/check-appeals-storage.mjs`, [его storage/process manager](src/backend/services/Appeals/Appeals.Infrastructure/README.md). Первичный и полный апелляционный маршруты, включая no-op/changed/senior, реализованы и приняты.
+| Что проверить | Команда или сценарий |
+| --- | --- |
+| Документацию и границы слоёв | `node scripts/check-docs.mjs`, `node scripts/check-architecture.mjs` |
+| Контракты и типы клиента | `npm run test:contracts`, `npm run check:api` |
+| Веб-приложение | `npm run typecheck:web`, `npm run test:web`, `npm run build:web` |
+| .NET и HTTP-обработчики | `dotnet test src/backend/Matigr.slnx` после `dotnet restore src/backend/Matigr.slnx --locked-mode` |
+| Запущенную инфраструктуру | `node scripts/check-infrastructure.mjs`. Для отдельных проверок хранилищ есть `check-checking-storage.mjs`, `check-results-storage.mjs` и `check-appeals-storage.mjs` в `scripts/`. Проверки, меняющие данные или останавливающие сервисы, запускайте на явно выбранном изолированном тестовом Compose-проекте. [Команды и порядок в CI](.github/workflows/ci.yml). |
+| Сквозные сценарии в браузере | [V1 — проверка и публикация](tests/e2e/v1.md), [V2 — передача старшему](tests/e2e/v2.md), [V3 — апелляция без изменения балла](tests/e2e/v3.md), [V4 — коррекция баллов и мест](tests/e2e/v4.md), [V5 — старший на апелляции](tests/e2e/v5.md), [V6 — окончание турнира и восстановление](tests/e2e/v6.md). |
 
-На свежем изолированном стеке после `check-checking-work.mjs --restart` запускайте `node scripts/check-checking-transitions.mjs` с тем же `COMPOSE_PROJECT_NAME`. Скрипт создаёт вердикты/передачу, проверяет прежний replay, освобождение и outbox по producer schema. Повтор на использованном стеке требует новых тестовых данных; рабочие назначения не сбрасываются.
-
-Текущая таблица: [локальный турнир](http://127.0.0.1:5173/results?tournamentId=0344e06b-4ea1-582e-bd91-e832719773f2), либо задайте публичный `VITE_TOURNAMENT_ID` для своего развёртывания. Это ссылка на подготовленный турнир, без управления турнирами. Standings и SSE доступны гостю, UI показывает серверные баллы/сумму/места и pending отдельно от опубликованного нуля. Reconnect/open/пропущенный сигнал восстанавливаются GET; приватные данные не передаются SSE.
-
-[Технический transport sample и redrive](src/backend/transport/README.md) компилируется независимо в Infrastructure трёх сервисов; общих доменных/ORM-моделей нет. Retry/poll/lease defaults настраиваются и не являются бизнес-сроками/SLO. На отдельном тестовом стеке после identity/work/transitions запустите `node scripts/check-transport.mjs`, затем `node scripts/check-live-results.mjs` с явным COMPOSE_PROJECT_NAME. Они меняют только тестовые данные/состояние брокера, проверяют recovery/confirm/mandatory return/quarantine, независимые копии CheckCompleted и живой SSE после настоящего вердикта. Не запускать fault-проверки на рабочем стеке.
-
-## GitHub и Sites
-
-Проект отправлен по поручению пользователя в приватный [SlnkvDns/matigr](https://github.com/SlnkvDns/matigr). Актуальный local/remote status проверяйте через Git; новые коммиты не отправляются автоматически.
-
-В Sites отдельно [опубликован только интерфейс](docs/implementation/sites-hosting.md): без backend/данных/production-входа. Это не замена локальному полному приложению. Для интернет-развёртывания нужны отдельная серверная конфигурация, HTTPS API gateway и production-аутентификация. Текущие `.local/secrets` и volumes не включать в Git/статическую публикацию.
+Первоначальная реализация завершена, приняты 82 задачи и браузерные сценарии V1–V6. Даты прогонов и результаты по каждому сервису собраны в [журнале реализации](docs/implementation/progress.md).
