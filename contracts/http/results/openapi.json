@@ -1,0 +1,133 @@
+{
+  "openapi": "3.1.1",
+  "jsonSchemaDialect": "https://json-schema.org/draft/2020-12/schema",
+  "info": {
+    "title": "Matigr Results API",
+    "version": "1.0.0",
+    "description": "Contract for published standings and private/internal reads. No score mutation, manual publication, scoring-rule mutation, tournament CRUD, or submission intake. Only health routes are implemented in the current Results foundation."
+  },
+  "servers": [{ "url": "/" }],
+  "security": [],
+  "tags": [{ "name": "Results" }, { "name": "Internal" }, { "name": "Health" }],
+  "paths": {
+    "/api/v1/results/tournaments/{tournamentId}/standings": {
+      "get": {
+        "operationId": "getTournamentStandings",
+        "tags": ["Results"],
+        "security": [],
+        "description": "Anonymous, consistent published snapshot. Pending cells have no score; Results owns totals and places. Response excludes material, reviewer, assignment, appeal history and private basis data.",
+        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }],
+        "responses": {
+          "200": {
+            "description": "Current public standings snapshot",
+            "headers": { "ETag": { "$ref": "#/components/headers/SnapshotETag" }, "Cache-Control": { "$ref": "#/components/headers/PublicCache" } },
+            "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StandingsSnapshot" } } }
+          },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/results/tournaments/{tournamentId}/standings/events": {
+      "get": {
+        "operationId": "streamStandingsInvalidations",
+        "tags": ["Results"],
+        "security": [],
+        "description": "Anonymous Server-Sent Events invalidating a public snapshot. Register the subscription before reading the current snapshot. Events carry only tournamentId, snapshotVersion and technical connection state; reconnect requires a fresh GET. This stream is not a replay log or the source of result data.",
+        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }, { "name": "Last-Event-ID", "in": "header", "required": false, "schema": { "type": "string" }, "description": "Ignored for business replay; reconnect performs a fresh snapshot handshake." }],
+        "responses": {
+          "200": { "description": "SSE invalidation stream", "headers": { "Cache-Control": { "$ref": "#/components/headers/NoCache" } }, "content": { "text/event-stream": { "schema": { "type": "string" }, "examples": { "snapshotInvalidated": { "value": "event: snapshot\ndata: {\"tournamentId\":\"tournament-1\",\"snapshotVersion\":\"12\"}\n\n" } } } } },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/api/v1/results/me/tournaments/{tournamentId}/results": {
+      "get": {
+        "operationId": "getMyTournamentResults",
+        "tags": ["Results"],
+        "description": "Private results for the team bound to the authenticated server-side subject. appealAvailabilityHint is non-authoritative; Appeals alone decides whether submission is allowed.",
+        "x-permission": "Team subject in tournament scope; teamId is taken from authenticated server-side identity",
+        "security": [{ "UserBearer": [] }],
+        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }],
+        "responses": {
+          "200": { "description": "Own published task results", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/MyTournamentResults" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/NotFound" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/internal/v1/results/{resultId}/appeal-basis": {
+      "get": {
+        "operationId": "getPublishedAppealBasis",
+        "tags": ["Internal"],
+        "description": "Trusted Appeals-service read of the currently published immutable basis. Must read the current record, not a cache. Does not authorize an appeal.",
+        "x-permission": "Trusted Appeals service credential with a dedicated service audience; user JWT is not accepted",
+        "security": [{ "ServiceBearer": [] }],
+        "parameters": [
+          { "name": "resultId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/OpaqueId" } },
+          { "name": "expectedResultVersion", "in": "query", "required": true, "schema": { "$ref": "#/components/schemas/PositiveVersion" }, "description": "Exact decimal version from the caller; Results never rebases this request." }
+        ],
+        "responses": {
+          "200": { "description": "Current published basis", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/json": { "schema": { "$ref": "#/components/schemas/AppealBasis" } } } },
+          "401": { "$ref": "#/components/responses/Unauthorized" },
+          "403": { "$ref": "#/components/responses/Forbidden" },
+          "404": { "$ref": "#/components/responses/PublishedResultNotFound" },
+          "409": { "$ref": "#/components/responses/ResultVersionConflict" },
+          "503": { "$ref": "#/components/responses/Unavailable" }
+        }
+      }
+    },
+    "/health/live": { "get": { "operationId": "getResultsLiveness", "tags": ["Health"], "security": [], "responses": { "200": { "description": "Process is alive" } } } },
+    "/health/ready": { "get": { "operationId": "getResultsReadiness", "tags": ["Health"], "security": [], "responses": { "200": { "description": "Results database is ready" }, "503": { "description": "Results database is unavailable" } } } }
+  },
+  "components": {
+    "securitySchemes": {
+      "UserBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "User token verified by the service; ownership and tournament rights are checked server-side." },
+      "ServiceBearer": { "type": "http", "scheme": "bearer", "bearerFormat": "JWT", "description": "Separate trusted service credential and audience for Appeals-to-Results. User JWT is not valid here; exact service token claims remain an implementation setting." }
+    },
+    "parameters": {
+      "TournamentId": { "name": "tournamentId", "in": "path", "required": true, "schema": { "$ref": "#/components/schemas/OpaqueId" } }
+    },
+    "headers": {
+      "SnapshotETag": { "description": "Strong validator for this coherent public snapshot.", "schema": { "type": "string", "pattern": "^\"(0|[1-9][0-9]*)\"$" } },
+      "PublicCache": { "description": "Public representation; contains no private data.", "schema": { "type": "string", "const": "public, max-age=0, must-revalidate" } },
+      "NoCache": { "description": "Do not cache a live event stream.", "schema": { "type": "string", "const": "no-cache" } },
+      "PrivateCache": { "description": "Private/internal response and errors are never stored by shared caches.", "schema": { "type": "string", "const": "private, no-store" } }
+    },
+    "schemas": {
+      "OpaqueId": { "type": "string", "minLength": 1, "description": "Opaque identifier; do not derive rights or ordering from its value." },
+      "PositiveVersion": { "type": "string", "pattern": "^[1-9][0-9]*$", "description": "Exact positive decimal integer; never pass through JavaScript Number." },
+      "SnapshotVersion": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$", "description": "Exact non-negative decimal snapshot version; never pass through JavaScript Number." },
+      "Score": { "type": "string", "pattern": "^(0|[1-9][0-9]*)$", "description": "Exact non-negative integer score in decimal notation." },
+      "ProblemDetails": {
+        "type": "object", "required": ["type", "title", "status", "code", "correlationId"], "additionalProperties": false,
+        "properties": { "type": { "type": "string" }, "title": { "type": "string" }, "status": { "type": "integer" }, "code": { "type": "string", "minLength": 1 }, "correlationId": { "$ref": "#/components/schemas/OpaqueId" } }
+      },
+      "StandingTask": { "type": "object", "required": ["taskId", "name"], "additionalProperties": false, "properties": { "taskId": { "$ref": "#/components/schemas/OpaqueId" }, "name": { "type": "string", "minLength": 1 } } },
+      "StandingCell": {
+        "type": "object", "required": ["status"], "additionalProperties": false,
+        "properties": { "status": { "enum": ["Pending", "Published"] }, "score": { "$ref": "#/components/schemas/Score" } },
+        "allOf": [
+          { "if": { "properties": { "status": { "const": "Published" } }, "required": ["status"] }, "then": { "required": ["score"] } },
+          { "if": { "properties": { "status": { "const": "Pending" } }, "required": ["status"] }, "then": { "not": { "required": ["score"] } } }
+        ]
+      },
+      "StandingTeam": { "type": "object", "required": ["teamId", "name", "cells", "total", "rank"], "additionalProperties": false, "properties": { "teamId": { "$ref": "#/components/schemas/OpaqueId" }, "name": { "type": "string", "minLength": 1 }, "cells": { "type": "array", "items": { "$ref": "#/components/schemas/StandingCell" } }, "total": { "$ref": "#/components/schemas/Score" }, "rank": { "type": "integer", "minimum": 1 } } },
+      "StandingsSnapshot": { "type": "object", "required": ["tournamentId", "snapshotVersion", "tasks", "teams"], "additionalProperties": false, "properties": { "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "snapshotVersion": { "$ref": "#/components/schemas/SnapshotVersion" }, "tasks": { "type": "array", "items": { "$ref": "#/components/schemas/StandingTask" } }, "teams": { "type": "array", "items": { "$ref": "#/components/schemas/StandingTeam" } } } },
+      "MyTaskResult": { "type": "object", "required": ["taskId", "resultId", "resultVersion", "publicationId", "outcome", "score", "appealAvailabilityHint"], "additionalProperties": false, "properties": { "taskId": { "$ref": "#/components/schemas/OpaqueId" }, "resultId": { "$ref": "#/components/schemas/OpaqueId" }, "resultVersion": { "$ref": "#/components/schemas/PositiveVersion" }, "publicationId": { "$ref": "#/components/schemas/OpaqueId" }, "outcome": { "enum": ["Correct", "Incorrect"] }, "score": { "$ref": "#/components/schemas/Score" }, "appealAvailabilityHint": { "type": "string", "description": "Non-authoritative display hint only; Appeals checks permission and eligibility on submission." } } },
+      "MyTournamentResults": { "type": "object", "required": ["tournamentId", "results"], "additionalProperties": false, "properties": { "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "results": { "type": "array", "items": { "$ref": "#/components/schemas/MyTaskResult" } } } },
+      "AppealBasis": { "type": "object", "required": ["resultId", "resultVersion", "tournamentId", "teamId", "taskId", "solutionId", "materialVersionId", "sourceCheckId", "decisionOrigin", "outcome", "scoreRuleVersion", "publicationId", "publishedAt", "publicationState"], "additionalProperties": false, "properties": { "resultId": { "$ref": "#/components/schemas/OpaqueId" }, "resultVersion": { "$ref": "#/components/schemas/PositiveVersion" }, "tournamentId": { "$ref": "#/components/schemas/OpaqueId" }, "teamId": { "$ref": "#/components/schemas/OpaqueId" }, "taskId": { "$ref": "#/components/schemas/OpaqueId" }, "solutionId": { "$ref": "#/components/schemas/OpaqueId" }, "materialVersionId": { "$ref": "#/components/schemas/OpaqueId" }, "sourceCheckId": { "$ref": "#/components/schemas/OpaqueId" }, "decisionOrigin": { "enum": ["OrdinaryReview", "AppealReview", "SeniorEscalation"] }, "outcome": { "enum": ["Correct", "Incorrect"] }, "scoreRuleVersion": { "$ref": "#/components/schemas/OpaqueId" }, "publicationId": { "$ref": "#/components/schemas/OpaqueId" }, "publishedAt": { "type": "string", "format": "date-time", "pattern": "Z$" }, "publicationState": { "const": "Published" } } }
+    },
+    "responses": {
+      "Unauthorized": { "description": "401: Unauthorized. Missing or invalid credential.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "Forbidden": { "description": "403: Forbidden. Authenticated subject/service lacks the required scope.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "NotFound": { "description": "404: NotFound. Tournament is not visible or unknown.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
+      "PublishedResultNotFound": { "description": "404: PublishedResultNotFound. No currently published result exists for this ID.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" }, "examples": { "PublishedResultNotFound": { "value": { "type": "about:blank", "title": "NotFound", "status": 404, "code": "PublishedResultNotFound", "correlationId": "request-1" } } } } } },
+      "ResultVersionConflict": { "description": "409: ResultVersionConflict. The current published version differs; the caller is not rebased.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" }, "examples": { "ResultVersionConflict": { "value": { "type": "about:blank", "title": "Conflict", "status": 409, "code": "ResultVersionConflict", "correlationId": "request-1" } } } } } },
+      "Unavailable": { "description": "503: DependencyUnavailable. Temporary dependency failure; no business permission or receipt is inferred.", "headers": { "Cache-Control": { "$ref": "#/components/headers/PrivateCache" } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } }
+    }
+  }
+}

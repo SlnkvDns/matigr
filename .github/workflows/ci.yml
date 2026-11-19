@@ -1,0 +1,77 @@
+name: ci
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  checking:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          global-json-file: global.json
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - run: node scripts/check-architecture.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: npm run test:contracts
+      - run: npm run check:api
+      - run: npm run typecheck:web
+      - run: npm run test:web
+      - run: npm run build:web
+      - run: node scripts/check-docs.mjs
+      - run: node scripts/prepare-fixtures.mjs
+      - run: node --test tests/fixtures/fixtures.test.mjs
+      - run: dotnet restore src/backend/Matigr.slnx --locked-mode
+      - run: dotnet build src/backend/Matigr.slnx --no-restore -c Release
+      - run: dotnet test src/backend/Matigr.slnx --no-build --no-restore -c Release
+  infrastructure:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - run: node --test tests/integration/http-readiness.test.mjs
+      - run: node scripts/init-local.mjs
+      - run: node scripts/prepare-fixtures.mjs
+      - run: node scripts/check-checking-storage.mjs
+      - run: node scripts/check-results-storage.mjs
+      - run: node scripts/check-appeals-storage.mjs
+      - if: always()
+        run: docker compose -p matigr-appeals-storage-tests -f infra/compose/appeals-storage-tests.yaml down
+      - if: always()
+        run: docker compose -p matigr-results-storage-tests -f infra/compose/results-storage-tests.yaml down
+      - if: always()
+        run: docker compose -p matigr-checking-storage-tests -f infra/compose/checking-storage-tests.yaml down
+      - run: docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
+      - run: node scripts/check-infrastructure.mjs
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+      - run: node scripts/check-identity.mjs --restart
+      - run: node scripts/check-results-http.mjs
+      - run: node scripts/check-checking-work.mjs --restart
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-checking-transitions.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-transport.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-live-results.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-checking-faults.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - run: node scripts/check-results-faults.mjs
+        env:
+          COMPOSE_PROJECT_NAME: matigr
+      - name: Show infrastructure diagnostics on failure
+        if: failure()
+        run: |
+          docker compose -f infra/compose/compose.yaml ps -a
+          docker compose -f infra/compose/compose.yaml logs --no-color --tail 100 checking-api results-api appeals-api
+      - if: always()
+        run: docker compose -f infra/compose/compose.yaml down

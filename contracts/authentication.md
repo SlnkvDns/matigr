@@ -1,0 +1,56 @@
+# Проверка пользовательского удостоверения — CHK-BE-04
+
+Актуализировано 26 октября 2026 года. Dev-issuer реализован в Checking; независимые verifiers user JWT, role/scope/ownership работают во всех трёх API. Межсервисное чтение Appeals → Results использует отдельную service identity. Контракт принят в первоначальном MVP; [задачи и доказательства](../docs/implementation/progress.md). Общей доменной библиотеки/Identity-сервиса нет; production-регистрация и вход пока не реализованы.
+
+## Выдача и профиль
+
+`POST /dev/v1/session/select` принимает строго `{ "testSubjectId": "jury-a" }` по [Checking OpenAPI](http/checking/openapi.json). Только окружения `Local` и `Test` регистрируют маршрут, directory и issuer. В `Development`, `Staging`, `Production` маршрут отсутствует (404), приватный ключ/manifest для выдачи не читаются. Неизвестный fixture key — `404 DevSubjectNotFound`, неверная форма, повтор ключа JSON или дополнительные поля — `400 InvalidRequest`.
+
+Сервер читает subjectId, displayName, roles, tournamentIds и необязательный teamId из проверенного по SHA-256 [manifest v1](../infra/fixtures/manifest.json). Клиент не задаёт роль, команду или scope. Ответ DevSession содержит подписанный accessToken, tokenType=Bearer, expiresAt и разрешённый профиль. teamId присутствует только у Team. Пароли/регистрация/обновление аккаунтов не реализуются. При повторном выборе/restart subjectId и ключ остаются прежними; jti и срок нового удостоверения меняются.
+
+## Доверенный JWT
+
+| Поле | Значение / проверка |
+| --- | --- |
+| Header alg / typ | Только `RS256` / `at+jwt`, RSA не слабее 3072 бит |
+| iss | Точное настроенное `Identity:Issuer`; локально `matigr-local` |
+| aud | Настроенное `Identity:Audience`; локально `matigr-user-api`, без эквивалентности завершающего `/` |
+| exp / nbf / iat | UTC NumericDate; exp обязателен, срок/nbf проверяются с ClockSkew=0. Время не управляет назначением или концом турнира |
+| sub | Единственный непустой стабильный внутренний subjectId, не fixture key и не имя пользователя |
+| name | Отображаемое имя; не ключ и не полномочие |
+| role | Массив уникальных серверных ролей Jury, Senior, Team, Organizer |
+| tournament_id | Массив уникальных разрешённых ID турниров; пустой scope не даёт доступа к турниру |
+| team_id | Единственная непустая привязка для Team, отсутствует у остальных |
+| token_use | Ровно `user`; сервисное удостоверение не принимается пользовательской схемой |
+| jti | Новый технический ID удостоверения; не ID бизнес-команды/назначения |
+
+Проверяющий использует доверенный публичный ключ из конфигурации, не ключ/URL из заголовка JWT. Закрытый ключ в `Identity:PublicKeyPath` отвергается. Проверяются подпись, issuer, audience, lifetime, тип и форма пользовательских claims; неверный токен → `401 Unauthorized` с `WWW-Authenticate: Bearer`. Подписанное удостоверение не заменяет проверку доступа к объекту.
+
+В Checking `AuthenticatedSubject` изолирует внутренние ID/права от JWT/dev-выбора. `MapCheckingApi()` защищает реализованные handlers политикой CheckingReviewer: Jury либо Senior. Senior — уполномоченный член жюри; старшая очередь дополнительно требует Senior. `CheckingReviewScope` проверяет роль и конкретный турнир через ресурс ReviewScope. Команды получают actor из `HttpContext.CurrentSubject()`. Заголовки браузера role/team/user и поля body не подменяют этот контекст.
+
+CHK-BE-05 проверяет актуальное Active-назначение из собственной БД перед выдачей capability в текущем назначении и перед/после чтения материала. Одна роль и даже валидный capability без принадлежности не дают права. Занятость не хранится в JWT; GET текущего назначения ищет её глобально, без фильтра турнира. CHK-BE-06 реализует завершение/отказ с проверкой capability/If-Match и успешный replay до проверки устаревшей версии. Тестовые authorization probes существуют только в тестовом host, в API не опубликованы.
+
+Results/Appeals проверяют тот же пользовательский контракт своими адаптерами и открытым ключом; их объектные права остаются собственными. Results в RES-BE-04 реализует независимый verifier этого wire-контракта и явно анонимную таблицу. Сервисный REST basis использует отдельное удостоверение/аудиторию и не авторизуется пользовательским JWT. Подключение IdP позже заменяет dev-выдачу и адаптер нормализации: внешний `(issuer, sub)` сопоставляется прежнему внутреннему subjectId без переписывания истории.
+
+## Настройка и локальная проверка
+
+Все host требуют `Identity:Issuer`, `Identity:Audience`, `Identity:PublicKeyPath`. В Local/Test дополнительно обязательны `Fixtures:Directory`, `DevIdentity:PrivateKeyPath`, положительный `DevIdentity:LifetimeSeconds`. Настройки передаются обычной ASP.NET configuration (`__` в environment). Без обязательных файлов/настроек запуск завершается ошибкой; пара ключей не генерируется во время выдачи. Manifest/key pair сверяются при запуске.
+
+Compose задаёт техническое время токена **3600 секунд** как изменяемую настройку локальной среды; это не бизнес-срок и не TTL назначения. Ключи создаёт `scripts/prepare-fixtures.mjs` в игнорируемой `.local/secrets`. Только Checking получает private key пользовательского issuer; Results/Appeals получают его public key. Entrypoints всех трёх сервисов копируют необходимые ключи из root-only Compose secrets в runtime-каталоги с владельцем UID 1654, mode 600 для файлов и 700 для каталогов; host permissions не ослабляются. Отдельная сервисная пара Appeals → Results не смешивается с пользовательским issuer. Ключи не публикуются HTTP и не входят в образ.
+
+```sh
+node scripts/init-local.mjs
+node scripts/prepare-fixtures.mjs
+docker compose -f infra/compose/compose.yaml up -d --build --wait --wait-timeout 180
+node scripts/check-infrastructure.mjs
+node scripts/check-identity.mjs --restart
+```
+
+Последняя команда проверяет семь живых профилей по OpenAPI, подпись через Node crypto и один public key, отклонение browser authority, затем перезапускает только Checking и проверяет прежний ключ/subject. Токены остаются в памяти скрипта и не выводятся. Backend integration tests проверяют также 401/403, scope, все не-local окружения и ключи. `Cache-Control: private, no-store` установлен для частных ответов и ошибок; ProblemDetails содержит code/correlationId без лишнего traceId. В CHK-FE-02 реализованы [переключатель, профиль и хранение токена только в памяти](../src/frontend/apps/web/README.md#сессия-и-граница-частных-данных), очистка частного состояния и защита от поздних ответов.
+
+Пакеты: JwtBearer 10.0.13, JsonWebTokens 8.19.2 (совместимость проверена по nuspec JwtBearer и locked restore). [Официальная настройка JWT bearer в ASP.NET Core 10](https://learn.microsoft.com/en-us/aspnet/core/security/authentication/configure-jwt-bearer-authentication?view=aspnetcore-10.0).
+
+RES-BE-04: служебный basis использует отдельные ServiceIdentity:Issuer/Audience/PublicKeyPath, RS256/at+jwt, token_use=service и sub=Appeals. Проверены отдельные user/service ключи, аудитории и взаимное отклонение токенов. Публичный ключ пользовательского issuer монтируется в Results без private key; service credentials и adapter потребителя реализованы в APL-INT-02. Без service-конфигурации внутренний маршрут закрыт.
+# Служебное чтение Results из Appeals
+
+APL-INT-02 использует отдельную RSA 3072+ пару `appeals-results-private.pem` / `appeals-results-public.pem`, создаваемую `scripts/init-local.mjs` только при отсутствии обоих файлов. Неполная/несогласованная пара отвергается, существующие ключи не заменяются. Compose передаёт private только Appeals, public только Results. Issuer `matigr-appeals-local`, audience `matigr-results-internal`, RS256/at+jwt, `sub=Appeals`, `token_use=service`; пользовательский JWT не подходит. Короткий токен формируется на каждый внутренний GET, не передаётся браузеру/брокеру/логам. Redirect отключён; timeout настраивается `Results:TimeoutSeconds`. Caller cancellation отменяет запрос; timeout/network/401/невалидная или неопубликованная база дают 503, provider 404/409 сохраняют различие. Кэш и SQL-транзакция в адаптере отсутствуют.

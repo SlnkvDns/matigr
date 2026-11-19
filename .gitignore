@@ -1,0 +1,18 @@
+.tools/
+.local/
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+**/coverage/
+**/TestResults/
+.env
+.env.*
+!.env.example
+*.user
+*.suo
+playwright-report/
+test-results/
+
+# Standalone Sites source checkouts have their own repository and publication lifecycle.
+/sites/

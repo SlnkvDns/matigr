@@ -1,0 +1,204 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/events/appeals/consumers/recheck-request-rejected.v1.schema.json",
+  "title": "RecheckRequestRejected (Appeals consumer expectation)",
+  "description": "Appeals consumer expectation for the Checking-owned rejection receipt.",
+  "type": "object",
+  "properties": {
+    "messageId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "messageType": {
+      "const": "matigr.checking.recheck-request-rejected"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "producer": {
+      "const": "Checking"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "UTC; not an ordering guarantee."
+    },
+    "aggregateType": {
+      "const": "RecheckRequest"
+    },
+    "aggregateId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "aggregateVersion": {
+      "const": "1"
+    },
+    "correlationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "causationId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier. Do not derive rights or ordering from its value."
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "recheckRequestId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "appealId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "requestedReviewerId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "solutionId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "resultId": {
+          "type": "string",
+          "minLength": 1,
+          "description": "Opaque identifier. Do not derive rights or ordering from its value."
+        },
+        "expectedResultVersion": {
+          "type": "string",
+          "pattern": "^[1-9][0-9]*$",
+          "description": "Exact decimal version, compared as an integer, never a JavaScript Number."
+        },
+        "reasonCode": {
+          "type": "string",
+          "enum": [
+            "ReviewerBusy",
+            "MaterialNotFound",
+            "BasisMismatch",
+            "BaseNotAppealable",
+            "RequestConflict",
+            "ReviewerNotAuthorized"
+          ]
+        },
+        "rejectedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$",
+          "description": "UTC; not an ordering guarantee."
+        }
+      },
+      "required": [
+        "recheckRequestId",
+        "appealId",
+        "requestedReviewerId",
+        "solutionId",
+        "resultId",
+        "expectedResultVersion",
+        "reasonCode",
+        "rejectedAt"
+      ],
+      "additionalProperties": true,
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "capability",
+            "capabilityHash",
+            "capabilityCiphertext",
+            "assignmentToken",
+            "token",
+            "accessToken",
+            "score",
+            "previousScore",
+            "points",
+            "total",
+            "scoreRuleVersion",
+            "comment",
+            "commentary",
+            "material",
+            "materialRef",
+            "materialFile",
+            "materialUrl",
+            "requestId"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "not": {
+            "anyOf": [
+              {
+                "required": [
+                  "checkId"
+                ]
+              },
+              {
+                "required": [
+                  "assignmentId"
+                ]
+              },
+              {
+                "required": [
+                  "reviewerId"
+                ]
+              },
+              {
+                "required": [
+                  "escalationId"
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "required": [
+    "messageId",
+    "messageType",
+    "schemaVersion",
+    "producer",
+    "occurredAt",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "causationId",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "propertyNames": {
+    "not": {
+      "enum": [
+        "capability",
+        "capabilityHash",
+        "capabilityCiphertext",
+        "assignmentToken",
+        "token",
+        "accessToken",
+        "score",
+        "previousScore",
+        "points",
+        "total",
+        "scoreRuleVersion",
+        "comment",
+        "commentary",
+        "material",
+        "materialRef",
+        "materialFile",
+        "materialUrl",
+        "requestId"
+      ]
+    }
+  }
+}

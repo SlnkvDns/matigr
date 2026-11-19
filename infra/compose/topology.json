@@ -1,0 +1,15 @@
+{
+  "vhost": "matigr",
+  "exchange": "matigr.v1",
+  "bindings": [
+    { "queue": "checking.recheck-requests.v1", "key": "appeals.recheck-requested.v1" },
+    { "queue": "results.check-completed.v1", "key": "checking.check-completed.initial.v1" },
+    { "queue": "results.check-completed.v1", "key": "checking.check-completed.appeal.v1" },
+    { "queue": "appeals.checking-facts.v1", "key": "checking.check-completed.appeal.v1" },
+    { "queue": "appeals.checking-facts.v1", "key": "checking.recheck-assigned.v1" },
+    { "queue": "appeals.checking-facts.v1", "key": "checking.recheck-escalated.v1" },
+    { "queue": "appeals.checking-facts.v1", "key": "checking.recheck-request-rejected.v1" },
+    { "queue": "appeals.result-receipts.v1", "key": "results.result-evaluation-applied.appeal.v1" },
+    { "queue": "appeals.result-receipts.v1", "key": "results.result-evaluation-rejected.appeal.v1" }
+  ]
+}

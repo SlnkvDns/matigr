@@ -1,0 +1,22 @@
+{
+  "messageId": "message-RecheckRequestRejected",
+  "messageType": "matigr.checking.recheck-request-rejected",
+  "schemaVersion": 1,
+  "producer": "Checking",
+  "occurredAt": "2026-10-23T04:00:00Z",
+  "aggregateType": "RecheckRequest",
+  "aggregateId": "request-1",
+  "aggregateVersion": "1",
+  "correlationId": "process-1",
+  "causationId": "command-1",
+  "payload": {
+    "appealId": "appeal-1",
+    "recheckRequestId": "request-1",
+    "resultId": "result-1",
+    "expectedResultVersion": "1",
+    "requestedReviewerId": "6b8e3a04-ab14-5bdd-92cc-4a767e67f29b",
+    "solutionId": "19537a57-dbab-56eb-a167-e04a7b3104fe",
+    "reasonCode": "ReviewerBusy",
+    "rejectedAt": "2026-10-23T04:00:00Z"
+  }
+}
