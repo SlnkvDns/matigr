@@ -1,16 +1,17 @@
 import { useEffect, useRef, useState } from 'react';
 import type { components } from '../../shared/api/generated/checking';
-import { ApiError } from '../../shared/api/http';
+import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
 import { useStandingsLabels } from '../results/useStandingsLabels';
-import { demoTaskStatement } from './demoTaskStatements';
+import { demoTask, isDemoMaterialPlaceholder } from './demoTasks';
 import './checking.css';
 
 type Assignment = components['schemas']['MyAssignment'];
 type Queue = components['schemas']['QueuePage'];
 type Pending = { path: string; body: unknown; key: string; etag?: string };
+type Material = { status: 'ready'; text: string } | { status: 'failed'; error: unknown };
 
 export function CheckingPage() {
   const { snapshot, session } = useSession();
@@ -21,40 +22,46 @@ export function CheckingPage() {
   const [queue, setQueue] = useState<'general' | 'senior'>('general');
   const [page, setPage] = useState<Queue>();
   const [current, setCurrent] = useState<Assignment>();
-  const statement = import.meta.env.DEV && current
-    ? demoTaskStatement(current.check.tournamentId, current.check.taskId)
-    : undefined;
+  const task = import.meta.env.DEV && current ? demoTask(current.check.tournamentId, current.check.taskId) : undefined;
   const [etag, setEtag] = useState<string>();
-  const [material, setMaterial] = useState<string>();
+  const [material, setMaterial] = useState<Material>();
+  const example = import.meta.env.DEV && task && material?.status === 'ready' && isDemoMaterialPlaceholder(material.text)
+    ? task.solution : undefined;
   const [error, setError] = useState<unknown>();
   const [reading, setReading] = useState(false);
   const [commanding, setCommanding] = useState(false);
-  const [materialLoading, setMaterialLoading] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const busy = reading || commanding || materialLoading;
+  const busy = reading || commanding;
   const [pending, setPending] = useState<Pending>();
   const [notice, setNotice] = useState('');
   const active = useRef(true);
   const sequence = useRef(0);
   const inFlight = useRef(false);
   const abort = useRef<AbortController | undefined>(undefined);
-  const materialAbort = useRef<AbortController | undefined>(undefined);
   const channel = useRef<BroadcastChannel | undefined>(undefined);
   useEffect(() => { if (!tournament && profile?.tournamentIds[0]) setTournament(profile.tournamentIds[0]); }, [profile, tournament]);
 
   async function load(cursor?: string) {
     const revision = ++sequence.current;
     abort.current?.abort(); const cancellation = new AbortController(); abort.current = cancellation;
-    materialAbort.current?.abort(); setMaterialLoading(false);
+    const isCurrent = () => active.current && !cancellation.signal.aborted && revision === sequence.current;
     setReading(true); setLoaded(false); setError(undefined); setMaterial(undefined);
     try {
       const client = session.workspace().client('/api/v1/checking');
       const assignment = await client.get<Assignment>('/me/assignment', { signal: cancellation.signal });
       const available = await client.get<Queue>(`/queues?${new URLSearchParams({ tournamentId: tournament, queue, ...(cursor ? { cursor } : {}) })}`, { signal: cancellation.signal });
-      if (!active.current || revision !== sequence.current) return;
+      if (!isCurrent()) return;
       setCurrent(assignment.data); setEtag(assignment.etag ?? undefined); setPage(available.data); setLoaded(true);
-    } catch (e) { if (active.current && !cancellation.signal.aborted && revision === sequence.current) setError(e); }
-    finally { if (active.current && revision === sequence.current) setReading(false); }
+      if (assignment.data) {
+        void client.text(`/checks/${encodeURIComponent(assignment.data.check.checkId)}/material`, { signal: cancellation.signal })
+          .then(({ data }) => {
+            if (data === undefined) throw new ApiProtocolError();
+            if (isCurrent()) setMaterial({ status: 'ready', text: data });
+          })
+          .catch(error => { if (isCurrent()) setMaterial({ status: 'failed', error }); });
+      }
+    } catch (e) { if (isCurrent()) setError(e); }
+    finally { if (isCurrent()) setReading(false); }
   }
   useEffect(() => {
     active.current = true;
@@ -69,12 +76,12 @@ export function CheckingPage() {
         updates.onmessage = event => { if (event.data?.type === 'changed') refresh(); };
       }
       return () => {
-        active.current = false; ++sequence.current; abort.current?.abort(); materialAbort.current?.abort();
+        active.current = false; ++sequence.current; abort.current?.abort();
         window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); window.removeEventListener('pageshow', refresh);
         document.removeEventListener('visibilitychange', visible); channel.current?.close(); channel.current = undefined;
       };
     }
-    return () => { active.current = false; ++sequence.current; abort.current?.abort(); materialAbort.current?.abort(); };
+    return () => { active.current = false; ++sequence.current; abort.current?.abort(); };
   }, [tournament, queue, permitted]);
 
   async function command(operation: Pending) {
@@ -96,22 +103,10 @@ export function CheckingPage() {
     } finally { inFlight.current = false; if (active.current) setCommanding(false); }
   }
   function verdict(outcome?: 'Correct' | 'Incorrect') {
-    if (!current || !etag) return;
+    if (!current || !etag || !loaded || (outcome && material?.status !== 'ready')) return;
     void command({ path: `/checks/${encodeURIComponent(current.check.checkId)}/${outcome ? 'complete' : 'refuse'}`,
       body: { assignmentId: current.assignmentId, capability: current.capability, ...(outcome ? { outcome } : {}) },
       key: crypto.randomUUID(), etag });
-  }
-  async function openMaterial() {
-    if (!current) return;
-    const checkId = current.check.checkId;
-    const revision = sequence.current;
-    materialAbort.current?.abort(); const cancellation = new AbortController(); materialAbort.current = cancellation;
-    setMaterialLoading(true); setError(undefined);
-    try {
-      const response = await session.workspace().client('/api/v1/checking').text(`/checks/${encodeURIComponent(checkId)}/material`, { signal: cancellation.signal });
-      if (active.current && revision === sequence.current && !cancellation.signal.aborted) setMaterial(response.data);
-    } catch (e) { if (active.current && revision === sequence.current && !cancellation.signal.aborted) setError(e); }
-    finally { if (active.current && revision === sequence.current) setMaterialLoading(false); }
   }
   return <Page title="Проверка решений" description="Рабочее место жюри для проверки решений команд.">
     {!permitted ? <p>Для проверки войдите как член жюри.</p> : <div className="checking-work">
@@ -134,16 +129,25 @@ export function CheckingPage() {
           <p>Команда: {standings?.teams.find(team => team.teamId === current.check.teamId)?.name ?? current.check.teamId}</p>
           <p>{current.check.state === 'SeniorAssigned' ? 'Назначена вам из очереди старшего жюри'
             : current.check.kind === 'Appeal' ? 'Ваша перепроверка по апелляции' : 'Назначена вам'}</p>
-          {statement && <div className="checking-statement">
+          {task && <div className="checking-statement">
             <h3>Учебное условие</h3>
-            <p>{statement}</p>
+            <p>{task.statement}</p>
           </div>}
-          <button disabled={busy || !!pending || !loaded} onClick={() => void openMaterial()}>Открыть материал</button>
-          {material !== undefined && <pre aria-label="Материал решения">{material}</pre>}
+          {loaded && <div className="checking-solution">
+            <h3>{example ? 'Учебный пример решения' : 'Решение команды'}</h3>
+            {material === undefined && <p role="status">Загружаем решение…</p>}
+            {material?.status === 'failed' && <>
+              <ApiProblemNotice error={material.error} />
+              <button disabled={busy || !!pending} onClick={() => void load()}>Повторить загрузку решения</button>
+            </>}
+            {material?.status === 'ready' && <pre aria-label="Материал решения">{example ?? material.text}</pre>}
+          </div>}
           <div className="checking-actions">
-            <button disabled={busy || !!pending || !loaded} onClick={() => verdict('Correct')}>Правильно</button>
-            <button disabled={busy || !!pending || !loaded} onClick={() => verdict('Incorrect')}>Неправильно</button>
-            {current.check.state === 'Assigned' && <button disabled={busy || !!pending || !loaded} onClick={() => verdict()}>Передать старшему</button>}
+            {loaded && material?.status === 'ready' && <>
+              <button className="checking-verdict" disabled={busy || !!pending} onClick={() => verdict('Correct')}>Правильно</button>
+              <button className="checking-verdict" disabled={busy || !!pending} onClick={() => verdict('Incorrect')}>Неправильно</button>
+            </>}
+            {current.check.state === 'Assigned' && <button className="checking-transfer" disabled={busy || !!pending || !loaded} onClick={() => verdict()}>Передать старшему</button>}
           </div>
         </> : <p>{loaded ? 'У вас нет незавершённой проверки.' : 'Назначение уточняется.'}</p>}
       </section>

@@ -6,7 +6,6 @@
 .checking-work button { padding: .6rem .9rem; cursor: pointer; }
 .checking-work button:disabled { cursor: default; opacity: .55; }
 .checking-work p, .checking-work li { overflow-wrap: anywhere; }
-.checking-work pre { white-space: pre-wrap; overflow-wrap: anywhere; font: inherit; background: #f6f3ec; padding: 1rem; }
 .checking-statement {
   margin: 1rem 0;
   padding: .9rem 1rem;
@@ -16,3 +15,38 @@
 }
 .checking-statement h3 { margin: 0; font-size: 1rem; }
 .checking-statement p { margin: .4rem 0 0; max-width: 72ch; line-height: 1.55; }
+.checking-solution {
+  margin: 1rem 0;
+  padding: .95rem 1rem;
+  border: 1px solid #dce2d9;
+  border-radius: 8px;
+  background: #fff;
+}
+.checking-solution h3 { margin: 0; font-size: 1rem; }
+.checking-solution pre {
+  margin: .4rem 0 0;
+  max-width: 72ch;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font: inherit;
+  line-height: 1.55;
+}
+.checking-actions .checking-verdict {
+  border: 1px solid #aebfb0;
+  border-radius: 6px;
+  background: #fff;
+  color: #214e39;
+  font: 600 .875rem/1.4 Inter, "Segoe UI", system-ui, sans-serif;
+}
+.checking-actions .checking-verdict:hover:enabled { background: #e9efe6; }
+.checking-actions .checking-transfer {
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: #45554a;
+  font: inherit;
+  font-size: .875rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.checking-actions .checking-transfer:hover:enabled { background: #e9efe6; }
