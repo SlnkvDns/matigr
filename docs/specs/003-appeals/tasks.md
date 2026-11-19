@@ -48,7 +48,7 @@
 
 | ID | Сценарий | Зависимости | Проверяемый результат | Статус |
 | --- | --- | --- | --- | --- |
-| APL-UT-01 | V3 | APL-BE-01 | Доменные тесты допуска/квоты/immutable basis/переходов, один Appeal навсегда, запрет senior-origin, ручной выбор самого себя/original reviewer, no-op vs changed. AP-A01/03/06/08–10/16–18/20/21/26/36 | Выполнена |
+| APL-UT-01 | V3 | APL-BE-01 | Доменные тесты допуска, постоянной квоты, неизменяемого основания, ручного выбора и подтверждения Results. Тест допуска первичного SeniorEscalation актуализирован после пересмотра D14. AP-A01/03/06/08–10/16–18/20/21/26/36 | Выполнена |
 | APL-UT-02 | V3 | APL-INT-05 | Табличные перестановки facts/receipt: Applied раньше assigned/completed, старый busy/assignment, wrong links, терминальный Closed. AP-A11–13/23–25 | Выполнена |
 | APL-UT-03 | V5 | APL-INT-06, APL-UT-02 | Перестановки escalation/senior assignment/Applied, Selected vs Senior actual lineage, освобождённый прежний жюри и immutable исходный выбор. AP-A32–35 | Выполнена |
 

@@ -1,6 +1,6 @@
 # Matigr Web
 
-Актуализировано 26 октября 2026 года; все frontend-задачи первоначального MVP и браузерные V1–V6 завершены. [Доказательства и ограничения](../../../../docs/implementation/progress.md).
+Актуализировано 19 ноября 2026 года. Все frontend-задачи первоначального MVP и браузерные сценарии V1–V6 завершены. Последующие изменения охватывают карточку проверки и ход назначения апелляции. [Доказательства и ограничения](../../../../docs/implementation/progress.md).
 
 Единственный React/TypeScript/Vite app для Checking, Results и Appeals. npm workspace `@matigr/web`; общий lockfile находится в корне репозитория.
 
@@ -27,7 +27,7 @@ Dev-сервер слушает только `127.0.0.1:5173`. Production build 
 
 `src/shared/api/generated/checking.d.ts`, `results.d.ts`, `appeals.d.ts` создаются из собственных [Checking](../../../../contracts/http/checking/openapi.json), [Results](../../../../contracts/http/results/openapi.json), [Appeals OpenAPI](../../../../contracts/http/appeals/openapi.json) командой `npm run generate:api`. `npm run check:api` проверяет, что сохранённый результат генерации совпадает с контрактом; CI выполняет эту проверку до typecheck. Доменные модели backend во frontend не импортируются. Генератор и роутер закреплены в package.json, остальные версии соответствуют [базовой среде](../../../../docs/architecture/runtime-baseline.md).
 
-HTTP-клиент работает с относительными путями выбранного API, принимает токен только на конкретный запрос, не хранит его в local/sessionStorage или cookie. Credentials cookies выключены, редиректы запрещены, cache=no-store. JSON response типизирован, но генерация TypeScript не заменяет runtime validation недоверенных данных. Материал подключён отдельным защищённым binary-response adapter CHK-FE-03.
+HTTP-клиент работает с относительными путями выбранного API, принимает токен только на конкретный запрос, не хранит его в local/sessionStorage или cookie. Credentials cookies выключены, редиректы запрещены, cache=no-store. JSON response типизирован, но генерация TypeScript не заменяет runtime validation недоверенных данных. Решение запрашивается через защищённый текстовый ответ Checking.
 
 Команда требует переданный вызывающим экраном Idempotency-Key; If-Match и ETag сохраняются строками без числового преобразования. Клиент не создаёт новые ключи, не повторяет запросы автоматически, не снимает назначение при отмене запроса и не считает потерянный ответ отказом сервера. Отмена fetch/body parsing сохраняется как AbortError. Технический stateless POST dev-issuer отделён от команды с receipt. Жизненный цикл сохранённой команды/повтора после возвращения относится к CHK-FE-04.
 
@@ -70,7 +70,7 @@ CHK-FE-04: focus/online/pageshow/видимая вкладка и BroadcastChann
 Component/controller tests дополнены пройденными браузерными [V1](../../../../tests/e2e/v1.md)–[V6](../../../../tests/e2e/v6.md), без подмены PostgreSQL/broker. Локальный URL таблицы приведён в корневом README.
 ## Апелляции команды
 
-APL-FE-01 получает resultId/expectedResultVersion из ссылки Results, загружает own list/details через private workspace и отправляет только эту пару с устойчивым Idempotency-Key. Неоднозначный ответ повторяется прежней командой. Existing resultId независимо от новой версии блокирует вторую форму; допуск, квота и окно проверяются Appeals. Registered показывается как ожидание ручного выбора, без автоматического claim. При смене субъекта/маршрута отменяются запросы и pending actions; поздние ответы не восстанавливают частное состояние. Appeals DTO генерируются из собственного OpenAPI, Vite proxy направлен на отдельный API 5103.
+APL-FE-01 получает resultId/expectedResultVersion из ссылки Results, загружает own list/details через private workspace и отправляет только эту пару с устойчивым Idempotency-Key. Неоднозначный ответ повторяется прежней командой. Наличие апелляции по результату скрывает форму независимо от версии. Сервер Appeals проверяет допуск, постоянную квоту и окно, включая первую подачу после первичного вердикта старшего. Статус Registered отображается как «В очереди на перепроверку». При смене субъекта или маршрута запросы отменяются и поздние ответы не восстанавливают частное состояние. Типы генерируются из OpenAPI Appeals. Vite направляет его запросы на API 5103 по умолчанию.
 
 APL-FE-02: Registered очередь жюри и явный claim. 202 означает только pending request; ссылка на Checking появляется после сверки собственного назначения/checkId/reviewer. Подтверждённый Busy возвращает тот же Appeal к ручному выбору, uncertain retry сохраняет key/If-Match. Другой subject не получает чужую ссылку.
 
