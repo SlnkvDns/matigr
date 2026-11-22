@@ -6,7 +6,9 @@ Outbox: короткая транзакция claim с SKIP LOCKED и техни
 
 Вход: BasicGet с manual ack; schema/producer/routing/lineage guard, затем собственный application handler. Ack после бизнес-коммита либо durable Deferred/Quarantined. Неизвестный обработчик/временная зависимость сохраняются для retry без terminal inbox. Невалидное сообщение не вызывает горячий requeue. Недоступная БД оставляет доставку неподтверждённой; reconnect с backoff. Никакой exactly-once доставки и общего порядка нет.
 
-WireSchema проверяет используемый опубликованными Draft 2020-12 schemas набор assertion keywords. Неизвестная assertion останавливает startup, а не игнорируется. Consumer schemas независимы от producer schemas; runtime fixtures и негативные изменения проверяются отдельно. Семантические равенства selected/actual и aggregate/check проверяются дополнительно. Raw poison сохраняется как text в собственной БД, не в логах/HTTP. Доступ к диагностике — операторский.
+WireSchema проверяет используемый опубликованными Draft 2020-12 schemas набор assertion keywords. Неизвестная assertion останавливает startup. Consumer schemas независимы от producer schemas. Материалы производителя и потребителя проверяются тестами. [Правила событий Checking](../../../contracts/events/checking/CheckingEventRules.cs) проверяют соответствие маршрута и идентификаторов поверх JSON Schema и подключаются владельцем и потребителями. Raw poison сохраняется как text в собственной БД, доступ к диагностике операторский.
+
+`TransportObserver` собирает число ожидающих событий, возраст старейшего и статистику ошибок. На реплике один наблюдатель локальной БД, в том числе при двух очередях Appeals. Сбор выполняется отдельно от доставки. Интервал задаёт `Transport:MetricsIntervalSeconds`, по умолчанию 10 секунд.
 
 Настройки `Transport:*`: Enabled (по умолчанию false, Compose включает), PollMilliseconds=500, LeaseSeconds=30, MaxAttempts=8, RetryBaseSeconds=2, RetryMaxSeconds=60. Это изменяемые технические defaults, не бизнес-сроки и не SLO. Retry ограничен, exponential backoff capped; после исчерпания сохраняется quarantine, outbox остаётся Pending и не считается доставленным. Retention/автоочистки нет.
 

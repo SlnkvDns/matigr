@@ -4,7 +4,7 @@
   "info": {
     "title": "Matigr Results API",
     "version": "1.0.0",
-    "description": "Contract for published standings and private/internal reads. No score mutation, manual publication, scoring-rule mutation, tournament CRUD, or submission intake. Only health routes are implemented in the current Results foundation."
+    "description": "Contract for published standings and private/internal reads. No score mutation, manual publication, scoring-rule mutation, tournament CRUD, or submission intake."
   },
   "servers": [{ "url": "/" }],
   "security": [],
@@ -16,13 +16,14 @@
         "tags": ["Results"],
         "security": [],
         "description": "Anonymous, consistent published snapshot. Pending cells have no score; Results owns totals and places. Response excludes material, reviewer, assignment, appeal history and private basis data.",
-        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }],
+        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }, { "name": "If-None-Match", "in": "header", "required": false, "schema": { "type": "string" } }],
         "responses": {
           "200": {
             "description": "Current public standings snapshot",
             "headers": { "ETag": { "$ref": "#/components/headers/SnapshotETag" }, "Cache-Control": { "$ref": "#/components/headers/PublicCache" } },
             "content": { "application/json": { "schema": { "$ref": "#/components/schemas/StandingsSnapshot" } } }
           },
+          "304": { "description": "Snapshot version matches If-None-Match; no response body", "headers": { "ETag": { "$ref": "#/components/headers/SnapshotETag" }, "Cache-Control": { "$ref": "#/components/headers/PublicCache" } } },
           "404": { "$ref": "#/components/responses/NotFound" },
           "503": { "$ref": "#/components/responses/Unavailable" }
         }
@@ -30,13 +31,15 @@
     },
     "/api/v1/results/tournaments/{tournamentId}/standings/events": {
       "get": {
-        "operationId": "streamStandingsInvalidations",
+        "operationId": "streamStandingsSnapshots",
         "tags": ["Results"],
         "security": [],
-        "description": "Anonymous Server-Sent Events invalidating a public snapshot. Register the subscription before reading the current snapshot. Events carry only tournamentId, snapshotVersion and technical connection state; reconnect requires a fresh GET. This stream is not a replay log or the source of result data.",
-        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }, { "name": "Last-Event-ID", "in": "header", "required": false, "schema": { "type": "string" }, "description": "Ignored for business replay; reconnect performs a fresh snapshot handshake." }],
+        "description": "Anonymous WebSocket. Server text messages carry complete public snapshots. After connecting or reconnecting, the server sends the current snapshot, then the latest changes. Versions may be skipped; clients keep the highest version. Clients do not send application messages.",
+        "parameters": [{ "$ref": "#/components/parameters/TournamentId" }],
+        "x-websocket-message": { "$ref": "#/components/schemas/StandingsSnapshot" },
         "responses": {
-          "200": { "description": "SSE invalidation stream", "headers": { "Cache-Control": { "$ref": "#/components/headers/NoCache" } }, "content": { "text/event-stream": { "schema": { "type": "string" }, "examples": { "snapshotInvalidated": { "value": "event: snapshot\ndata: {\"tournamentId\":\"tournament-1\",\"snapshotVersion\":\"12\"}\n\n" } } } } },
+          "101": { "description": "WebSocket upgrade for the public standings subscription" },
+          "400": { "description": "WebSocket upgrade required", "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
           "503": { "$ref": "#/components/responses/Unavailable" }
         }
@@ -94,7 +97,6 @@
     "headers": {
       "SnapshotETag": { "description": "Strong validator for this coherent public snapshot.", "schema": { "type": "string", "pattern": "^\"(0|[1-9][0-9]*)\"$" } },
       "PublicCache": { "description": "Public representation; contains no private data.", "schema": { "type": "string", "const": "public, max-age=0, must-revalidate" } },
-      "NoCache": { "description": "Do not cache a live event stream.", "schema": { "type": "string", "const": "no-cache" } },
       "PrivateCache": { "description": "Private/internal response and errors are never stored by shared caches.", "schema": { "type": "string", "const": "private, no-store" } }
     },
     "schemas": {

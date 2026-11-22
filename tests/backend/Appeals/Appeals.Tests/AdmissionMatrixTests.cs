@@ -4,6 +4,18 @@ namespace Matigr.Appeals.Tests;
 
 public class AdmissionMatrixTests
 {
+    [Fact]
+    public void Confirmed_publication_and_registered_state_allow_progress_with_skewed_clocks()
+    {
+        var now = AppealTests.Now;
+        var basis = AppealTests.Basis() with { PublishedAt = now.AddMilliseconds(300) };
+        var registered = Appeal.Register(Guid.NewGuid(), basis, basis.TeamId, new(basis.TournamentId), now, false);
+        var claimed = registered.Claim(Guid.NewGuid(), Guid.NewGuid(), now.AddMilliseconds(-300));
+        Assert.Equal(AppealState.AcceptedAwaitingRecheck, claimed.State);
+        Assert.Equal(basis.PublishedAt, claimed.Basis.PublishedAt);
+        Assert.Equal(now, claimed.SubmittedAt);
+        Assert.Equal(now.AddMilliseconds(-300), claimed.Attempt!.AcceptedAt);
+    }
     [Theory]
     [InlineData("team", "Forbidden")]
     [InlineData("tournament", "Forbidden")]

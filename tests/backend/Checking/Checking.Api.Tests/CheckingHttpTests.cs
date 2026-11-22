@@ -11,7 +11,14 @@ namespace Matigr.Checking.Api.Tests;
 
 public class CheckingHttpTests(IdentityTestFiles files) : IClassFixture<IdentityTestFiles>
 {
-    private sealed class WorkProbe : ICheckingWork
+    private static void Register(IServiceCollection services, WorkProbe probe)
+    {
+        services.AddSingleton<ICheckingCommands>(probe);
+        services.AddSingleton<ICheckingReads>(probe);
+        services.AddSingleton<ICheckingMaterial>(probe);
+    }
+
+    private sealed class WorkProbe : ICheckingCommands, ICheckingReads, ICheckingMaterial
     {
         public Task<CheckView> TransitionAsync(AuthenticatedSubject subject, Guid checkId, Guid assignmentId, string capability,
             string? outcome, long expectedVersion, string key, string correlationId, CancellationToken ct)
@@ -52,7 +59,7 @@ public class CheckingHttpTests(IdentityTestFiles files) : IClassFixture<Identity
     [InlineData("\"2\"", 200)]
     public async Task Verdict_routes_require_strong_version_and_trusted_owner_adapter(string? etag, int status)
     {
-        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<ICheckingWork>(new WorkProbe())));
+        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => Register(s, new WorkProbe())));
         using var client = factory.CreateClient(); await SignIn(client);
         foreach (var op in new[] { "complete", "refuse" })
         {
@@ -78,7 +85,7 @@ public class CheckingHttpTests(IdentityTestFiles files) : IClassFixture<Identity
     public async Task Take_rejects_invalid_or_browser_selected_actor_without_calling_work(string body)
     {
         var probe = new WorkProbe();
-        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<ICheckingWork>(probe)));
+        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => Register(s, probe)));
         using var client = factory.CreateClient(); await SignIn(client);
         using var request = new HttpRequestMessage(HttpMethod.Post, "/api/v1/checking/me/assignments/next")
             { Content = new StringContent(body, Encoding.UTF8, "application/json") };
@@ -92,7 +99,7 @@ public class CheckingHttpTests(IdentityTestFiles files) : IClassFixture<Identity
     public async Task Wire_views_are_exact_private_and_version_strings_do_not_lose_precision()
     {
         var probe = new WorkProbe();
-        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => s.AddSingleton<ICheckingWork>(probe)));
+        await using var factory = files.Factory().WithWebHostBuilder(b => b.ConfigureServices(s => Register(s, probe)));
         using var client = factory.CreateClient();
         Assert.Equal(HttpStatusCode.Unauthorized, (await client.GetAsync("/api/v1/checking/me/assignment")).StatusCode);
         await SignIn(client, "team-alpha");

@@ -4,9 +4,9 @@
 
 ## HTTP Results
 
-[OpenAPI 3.1.1](http/results/openapi.json) задаёт анонимный snapshot standings и SSE invalidation, частный результат команды и единственный internal basis endpoint Results → Appeals. UserBearer и отдельный ServiceBearer имеют разные security schemes; user JWT не подходит для internal route. API-контракт не добавляет ручное начисление, изменение стоимости, загрузку решений или управление турниром. Health и бизнес-маршруты Results реализованы в RES-BE-03/04/05. Публичные standings DTO не включают private basis, а internal basis запрещает дополнительные поля и содержит только опубликованный источник.
+[OpenAPI 3.1.1](http/results/openapi.json) задаёт анонимный GET таблицы и WebSocket-канал снимков, частный результат команды и внутренний endpoint основания Results → Appeals. GET с подходящим `If-None-Match` возвращает `304`. WebSocket передаёт тот же DTO `StandingsSnapshot` при подключении и после изменений. UserBearer и отдельный ServiceBearer имеют разные security schemes. Публичный снимок содержит только согласованные поля таблицы, служебное основание читается отдельным маршрутом.
 
-Баллы и версии представлены точными десятичными строками. Pending-ячейка не содержит score; Published-ячейка содержит score. Team-result `appealAvailabilityHint` не разрешает подачу: решение остаётся за Appeals. GET/SSE публичны, личный экран использует server-side team scope, внутренний вызов требует отдельной service identity и точной expectedResultVersion.
+Баллы и версии представлены точными десятичными строками. Pending-ячейка не содержит score, Published-ячейка содержит score. Допуск определяет Appeals. Публичный канал передаёт готовые версии таблицы, личный экран использует server-side team scope, внутренний вызов требует отдельной service identity и точной expectedResultVersion.
 
 ## HTTP Appeals
 

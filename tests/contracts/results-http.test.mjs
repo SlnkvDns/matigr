@@ -41,7 +41,13 @@ test('public snapshots distinguish pending cells, published scores and do not ex
   ]) assert.throws(() => validateResultsHttp('StandingsSnapshot', bad));
   const operation = paths[`${apiPrefix}/tournaments/{tournamentId}/standings`].get;
   assert.ok(resolveResultsObject(operation.responses['200']).headers.ETag);
+  assert.ok(operation.parameters.some(parameter => parameter.name === 'If-None-Match'));
+  assert.equal(operation.responses['304'].content, undefined);
+  assert.ok(operation.responses['304'].headers.ETag);
   assert.match(operation.description, /Results owns totals and places/);
+  const stream = paths[`${apiPrefix}/tournaments/{tournamentId}/standings/events`].get;
+  assert.ok(stream.responses['101']);
+  assert.deepEqual(resolveResultsObject(stream['x-websocket-message']), resultsOpenapi.components.schemas.StandingsSnapshot);
 });
 
 test('private results do not accept caller-supplied team identity and hint is not authority', () => {

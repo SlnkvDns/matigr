@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Matigr.Checking.Contracts;
 using Matigr.Results.Application;
 using Matigr.Results.Domain;
 using Matigr.Transport;
@@ -17,13 +18,14 @@ public static class ResultsTransport
         if (!c.GetValue<bool>("Transport:Enabled")) return services;
         var options = TransportOptions.Read(c, "Results", "results.check-completed.v1", "Results.CheckCompleted.v1", "envelope");
         services.AddSingleton(options); services.AddSingleton<PostgresTransportStore>();
+        services.AddHostedService<TransportObserver>();
         var assembly = typeof(ResultsTransport).Assembly;
         services.AddSingleton(new TransportSchemas(new Dictionary<string, WireSchema> {
             ["checking.check-completed.initial.v1"] = new(assembly, "check-completed.v1.schema.json"),
             ["checking.check-completed.appeal.v1"] = new(assembly, "check-completed.v1.schema.json") },
             new Dictionary<string, WireSchema> {
                 ["results.result-evaluation-applied.appeal.v1"] = new(assembly, "result-evaluation-applied.v1.schema.json"),
-                ["results.result-evaluation-rejected.appeal.v1"] = new(assembly, "result-evaluation-rejected.v1.schema.json") }));
+                ["results.result-evaluation-rejected.appeal.v1"] = new(assembly, "result-evaluation-rejected.v1.schema.json") }, CheckingEventRules.Validate));
         services.AddSingleton(new ConnectionFactory { HostName = c["Broker:Host"] ?? "localhost", UserName = c["Broker:Username"] ?? "results",
             Password = c["Broker:Password"] ?? throw new InvalidOperationException("Broker password required."), VirtualHost = c["Broker:VirtualHost"] ?? "matigr",
             AutomaticRecoveryEnabled = false, RequestedConnectionTimeout = TimeSpan.FromSeconds(5) });

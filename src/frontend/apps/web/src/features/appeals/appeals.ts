@@ -37,3 +37,16 @@ export function readList(v: unknown, tournament: string, team?: string): AppealS
     || new Set(v.items.map(i => i.appealId)).size !== v.items.length) throw new ApiProtocolError();
   return v.items as AppealSummary[];
 }
+export function scheduleAppealRefresh(refresh: () => Promise<void> | undefined, initialRead?: Promise<void>): () => void {
+  let stopped = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  function schedule() {
+    if (stopped) return;
+    timer = setTimeout(async () => {
+      await refresh();
+      schedule();
+    }, 5000);
+  }
+  void Promise.resolve(initialRead).then(schedule);
+  return () => { stopped = true; clearTimeout(timer); };
+}

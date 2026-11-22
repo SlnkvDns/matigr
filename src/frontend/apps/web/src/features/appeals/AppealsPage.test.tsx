@@ -32,6 +32,32 @@ function setup(fetcher: typeof fetch, version = '1') {
     ...credential('team').profile, roles: ['Team'], tournamentIds: ['t'], teamId: 'team' } }) }}>
     <MemoryRouter initialEntries={[`/appeals?tournamentId=t&resultId=r&expectedResultVersion=${version}`]}><Main /></MemoryRouter></SessionProvider>);
 }
+it('completes a six-second initial read without cancelling it and keeps submission enabled during refresh', async () => {
+  vi.useFakeTimers();
+  let reads = 0;
+  try {
+    await act(async () => {
+      setup(vi.fn(async url => {
+        if (!String(url).includes('/me?')) return jsonResponse({});
+        reads++;
+        await new Promise(resolve => setTimeout(resolve, 6000));
+        return jsonResponse({ tournamentId: 't', items: [] });
+      }));
+    });
+    await act(async () => { await vi.advanceTimersByTimeAsync(5000); window.dispatchEvent(new Event('focus')); });
+    expect(reads).toBe(1);
+    const submit = screen.getByRole('button', { name: 'Подать апелляцию' });
+    expect(submit).toBeDisabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(1000); });
+    expect(submit).toBeEnabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(15000); });
+    expect(reads).toBe(1);
+    fireEvent.click(screen.getByRole('button', { name: 'Обновить мои апелляции' }));
+    expect(reads).toBe(2);
+    expect(submit).toBeEnabled();
+    await act(async () => { await vi.advanceTimersByTimeAsync(6000); });
+  } finally { vi.useRealTimers(); }
+});
 it('double click sends one operation; uncertain response retries original body/key and Registered never auto-claims', async () => {
   const uncertain = deferred<Response>(); let submitted = false; const posts: RequestInit[] = [];
   const fetcher = vi.fn(async (url: RequestInfo | URL, init?: RequestInit) => {

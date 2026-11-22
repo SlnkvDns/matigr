@@ -41,6 +41,6 @@ public class RecheckRequestTests
         Assert.Throws<ArgumentException>(() => (request with { RequestId = Guid.Empty }).SemanticHash());
         Assert.Throws<ArgumentException>(() => (request with { ExpectedResultVersion = 0 }).SemanticHash());
         Assert.Throws<ArgumentException>(() => (request with { BaseOutcome = (CheckOutcome)999 }).SemanticHash());
-        Assert.Throws<ArgumentException>(() => (request with { AcceptedAt = request.SubmittedAt.AddSeconds(-1) }).SemanticHash());
+        Assert.NotEqual(request.SemanticHash(), (request with { AcceptedAt = request.SubmittedAt.AddSeconds(-1) }).SemanticHash());
     }
 }

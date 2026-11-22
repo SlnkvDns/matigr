@@ -1,6 +1,8 @@
 using HttpResults = Microsoft.AspNetCore.Http.Results;
 using Matigr.Results.Application;
+using Matigr.Results.Infrastructure;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Net.Http.Headers;
 using Npgsql;
 
 namespace Matigr.Results.Api;
@@ -11,11 +13,15 @@ public static class ResultsHttp
         title: "Operation unavailable", extensions: new Dictionary<string, object?> { ["code"] = code, ["correlationId"] = context.TraceIdentifier });
     public static void MapResultReads(this WebApplication app)
     {
-        app.MapGet("/api/v1/results/tournaments/{tournamentId}/standings", (string tournamentId, HttpContext context, IResultReads reads, CancellationToken ct) => Guard(context, async () => {
+        app.MapGet("/api/v1/results/tournaments/{tournamentId}/standings", (string tournamentId, HttpContext context, StandingsCache cache, CancellationToken ct) => Guard(context, async () => {
             if (!Guid.TryParse(tournamentId, out var tournament)) return Problem(context, 404, "TournamentNotFound");
-            var view = await reads.StandingsAsync(tournament, ct);
-            context.Response.Headers.ETag = $"\"{view.SnapshotVersion}\""; context.Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
-            return HttpResults.Ok(view);
+            var view = await cache.ReadAsync(tournament, ct);
+            var tag = new EntityTagHeaderValue(FormattableString.Invariant($"\"{view.Version}\""));
+            context.Response.GetTypedHeaders().ETag = tag;
+            context.Response.Headers.CacheControl = "public, max-age=0, must-revalidate";
+            if (context.Request.GetTypedHeaders().IfNoneMatch.Any(candidate => candidate == EntityTagHeaderValue.Any || candidate.Compare(tag, useStrongComparison: false)))
+                return HttpResults.StatusCode(StatusCodes.Status304NotModified);
+            return HttpResults.Bytes(view.Json, "application/json");
         }));
         app.MapGet("/api/v1/results/me/tournaments/{tournamentId}/results", (string tournamentId, HttpContext context, IResultReads reads, IConfiguration config, CancellationToken ct) => Guard(context, async () => {
             context.Response.Headers.CacheControl = "private, no-store";

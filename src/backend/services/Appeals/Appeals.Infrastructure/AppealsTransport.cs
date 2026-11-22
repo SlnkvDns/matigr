@@ -1,4 +1,5 @@
 using Matigr.Transport;
+using Matigr.Checking.Contracts;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -14,6 +15,7 @@ public static class AppealsTransport
         if (!c.GetValue<bool>("Transport:Enabled")) return services;
         var options = TransportOptions.Read(c, "Appeals", "appeals.checking-facts.v1", AppealProcess.Consumer, "envelope");
         services.AddSingleton(options); services.AddSingleton<PostgresTransportStore>();
+        services.AddHostedService<TransportObserver>();
         var assembly = typeof(AppealsTransport).Assembly;
         var schemas = new TransportSchemas(new Dictionary<string, WireSchema> {
             ["checking.recheck-assigned.v1"] = new(assembly, "recheck-assigned.v1.schema.json"),
@@ -22,7 +24,7 @@ public static class AppealsTransport
             ["checking.check-completed.appeal.v1"] = new(assembly, "check-completed.v1.schema.json"),
             ["results.result-evaluation-applied.appeal.v1"] = new(assembly, "result-evaluation-applied.v1.schema.json"),
             ["results.result-evaluation-rejected.appeal.v1"] = new(assembly, "result-evaluation-rejected.v1.schema.json")
-        }, new Dictionary<string, WireSchema> { ["appeals.recheck-requested.v1"] = new(assembly, "recheck-requested.v1.schema.json") });
+        }, new Dictionary<string, WireSchema> { ["appeals.recheck-requested.v1"] = new(assembly, "recheck-requested.v1.schema.json") }, CheckingEventRules.Validate);
         services.AddSingleton(schemas);
         services.AddSingleton(new ConnectionFactory { HostName = c["Broker:Host"] ?? "localhost", UserName = c["Broker:Username"] ?? "appeals",
             Password = c["Broker:Password"] ?? throw new InvalidOperationException("Broker password required."), VirtualHost = c["Broker:VirtualHost"] ?? "matigr",

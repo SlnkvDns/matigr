@@ -1,4 +1,4 @@
-using System.Net.Http.Json;
+using System.Net.WebSockets;
 using System.Text.Json;
 using Matigr.Results.Application;
 using Matigr.Results.Infrastructure;
@@ -21,65 +21,71 @@ public partial class StorageTests
         {
             await using var db = database.Open();
             var version = await new SnapshotVersions(db).CurrentAsync(tournament, ct);
-            if (Interlocked.Exchange(ref first, 1) == 0) {
-                Captured.TrySetResult(); await Release.Task.WaitAsync(TimeSpan.FromSeconds(15), ct);
+            if (Interlocked.Exchange(ref first, 1) == 0)
+            {
+                Captured.TrySetResult();
+                await Release.Task.WaitAsync(TimeSpan.FromSeconds(15), ct);
             }
             return version;
         }
     }
 
     [Fact]
-    public async Task Real_database_commit_between_subscription_handshake_and_GET_converges_on_two_API_replicas_and_after_missed_signal()
+    public async Task Real_database_commit_during_handshake_and_later_publications_reach_two_replicas()
     {
         var first = await NewEvaluation(); var second = await SecondTask(first); var gate = new HandshakeBarrier(fixture);
         WebApplicationFactory<Program> Host(bool barrier) => new WebApplicationFactory<Program>().WithWebHostBuilder(b => {
             b.UseEnvironment("Test");
             b.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?> {
-                ["ConnectionStrings:Results"] = fixture.Connection, ["Storage:ApplyMigrations"] = "false", ["Snapshots:PollMilliseconds"] = "10" }));
+                ["ConnectionStrings:Results"] = fixture.Connection, ["Storage:ApplyMigrations"] = "false" }));
             if (barrier) b.ConfigureServices(s => s.AddSingleton<ISnapshotVersions>(gate));
         });
         await using var one = Host(true); await using var two = Host(false);
-        using var clientOne = one.CreateClient(); using var clientTwo = two.CreateClient();
-        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(25));
-        var path = $"/api/v1/results/tournaments/{first.Key.TournamentId}/standings";
-        async Task<string> Frame(StreamReader reader) {
-            while (await reader.ReadLineAsync(stop.Token) is { } line) if (line.StartsWith("data: ", StringComparison.Ordinal)) {
-                using var frame = JsonDocument.Parse(line[6..]);
-                Assert.Equal(new[] { "snapshotVersion", "tournamentId" }, frame.RootElement.EnumerateObject().Select(x => x.Name).Order().ToArray());
-                return frame.RootElement.GetProperty("snapshotVersion").GetString()!;
-            }
-            throw new InvalidOperationException("Unexpected SSE end.");
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(40));
+        var path = new Uri($"ws://localhost/api/v1/results/tournaments/{first.Key.TournamentId}/standings/events");
+        var clientOne = one.Server.CreateWebSocketClient(); var clientTwo = two.Server.CreateWebSocketClient();
+        async Task<JsonDocument> Frame(WebSocket socket)
+        {
+            var buffer = new byte[2048];
+            using var body = new MemoryStream();
+            ValueWebSocketReceiveResult frame;
+            do
+            {
+                frame = await socket.ReceiveAsync(buffer.AsMemory(), stop.Token);
+                Assert.Equal(WebSocketMessageType.Text, frame.MessageType);
+                body.Write(buffer, 0, frame.Count);
+            } while (!frame.EndOfMessage);
+            return JsonDocument.Parse(body.ToArray());
         }
-        var pending = clientOne.GetAsync(path + "/events", HttpCompletionOption.ResponseHeadersRead, stop.Token);
+        async Task<string?> Version(WebSocket socket)
+        {
+            using var frame = await Frame(socket);
+            Assert.Equal(new[] { "snapshotVersion", "tasks", "teams", "tournamentId" }, frame.RootElement.EnumerateObject().Select(x => x.Name).Order().ToArray());
+            return frame.RootElement.GetProperty("snapshotVersion").GetString();
+        }
+        var pending = clientOne.ConnectAsync(path, stop.Token);
         await gate.Captured.Task.WaitAsync(stop.Token);
-        try { await using var db = fixture.Open(); await new ApplyEvaluation(db).InitialAsync(first, Guid.NewGuid(), "between-subscribe-handshake"); }
+        try { await using var db = fixture.Open(); await new ApplyEvaluation(db).InitialAsync(first, Guid.NewGuid(), "during-handshake"); }
         finally { gate.Release.TrySetResult(); }
-        using (var response = await pending)
-        using (var reader = new StreamReader(await response.Content.ReadAsStreamAsync(stop.Token))) {
-            Assert.Equal("0", await Frame(reader));
-            var snapshot = await clientOne.GetFromJsonAsync<JsonElement>(path, stop.Token);
-            Assert.Equal("1", snapshot.GetProperty("snapshotVersion").GetString());
-            Assert.Equal("1", await Frame(reader));
-            using var replica = await clientTwo.GetAsync(path + "/events", HttpCompletionOption.ResponseHeadersRead, stop.Token);
-            using var replicaReader = new StreamReader(await replica.Content.ReadAsStreamAsync(stop.Token));
-            Assert.Equal("1", await Frame(replicaReader));
+        using (var initial = await pending)
+        using (var replica = await clientTwo.ConnectAsync(path, stop.Token))
+        {
+            Assert.Equal("1", await Version(initial));
+            Assert.Equal("1", await Version(replica));
+            // No HTTP read occurs between the write and either WebSocket message.
             await using var db = fixture.Open(); await new ApplyEvaluation(db).InitialAsync(second, Guid.NewGuid(), "two-live-replicas");
-            Assert.Equal("2", await Frame(reader)); Assert.Equal("2", await Frame(replicaReader));
+            Assert.Equal("2", await Version(initial)); Assert.Equal("2", await Version(replica));
         }
-        // Both subscriptions are gone; commit with no listener, then reconnect with an old cursor.
         var offline = first with { CheckId = Guid.NewGuid(), SolutionId = Guid.NewGuid(), MaterialVersionId = Guid.NewGuid(), Key = first.Key with { TeamId = Guid.NewGuid() } };
-        await using (var db = fixture.Open()) {
+        await using (var db = fixture.Open())
+        {
             db.Teams.Add(new() { TournamentId = first.Key.TournamentId, TeamId = offline.Key.TeamId, Name = "Offline commit" });
             await db.SaveChangesAsync();
-            await new ApplyEvaluation(db).InitialAsync(offline, Guid.NewGuid(), "no-listeners");
+            await new ApplyEvaluation(db).InitialAsync(offline, Guid.NewGuid(), "no-viewers");
         }
-        clientTwo.DefaultRequestHeaders.Add("Last-Event-ID", "0");
-        using var reconnected = await clientTwo.GetAsync(path + "/events", HttpCompletionOption.ResponseHeadersRead, stop.Token);
-        using var reconnectedReader = new StreamReader(await reconnected.Content.ReadAsStreamAsync(stop.Token));
-        Assert.Equal("3", await Frame(reconnectedReader));
-        var final = await clientTwo.GetFromJsonAsync<JsonElement>(path, stop.Token);
-        Assert.Equal("3", final.GetProperty("snapshotVersion").GetString());
-        Assert.Equal("30", final.GetProperty("teams")[0].GetProperty("total").GetString());
-        stop.Cancel();
+        using var reconnected = await clientTwo.ConnectAsync(path, stop.Token);
+        using var latest = await Frame(reconnected);
+        Assert.Equal("3", latest.RootElement.GetProperty("snapshotVersion").GetString());
+        Assert.Equal("30", latest.RootElement.GetProperty("teams")[0].GetProperty("total").GetString());
     }
 }

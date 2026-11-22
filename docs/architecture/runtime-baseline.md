@@ -30,6 +30,8 @@
 
 Один durable topic exchange `matigr.v1`, durable очереди из implementation-contracts.md, persistent сообщения, publisher confirms + mandatory routing, manual ack только после локального commit. Checking/Results/Appeals имеют отдельные transport credentials. Маршрут включает kind для CheckCompleted и receipts: Results получает Initial и Appeal, Appeals — только Appeal и свои Checking facts. Строка producer в JSON не заменяет transport authorization. Автоматическая очистка receipts не вводится. Численные параметры повторов/наблюдения являются настраиваемой локальной техникой, не регламентом или SLO Q10/Q13.
 
+`Transport:MetricsIntervalSeconds` задаёт паузу между сборами агрегатной статистики. По умолчанию 10 секунд. Один наблюдатель на реплику читает статистику локальной БД с отдельным таймаутом. Счётчики отправки, подтверждений и ошибок обновляются в рабочем цикле.
+
 ## T07, Q05 и Q09
 
 - Внешние ID — непрозрачные строки; внутренние новые ID — UUID, в PostgreSQL uuid. Фикстуры имеют стабильные UUID, ID не кодируют полномочия. Получатель не выводит бизнес-смысл из формата.

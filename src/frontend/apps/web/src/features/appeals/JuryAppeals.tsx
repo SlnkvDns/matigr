@@ -4,7 +4,7 @@ import type { components as checking } from '../../shared/api/generated/checking
 import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
-import { appealName, exactVersion, readList, readView, reviewLabel, states } from './appeals';
+import { appealName, exactVersion, readList, readView, reviewLabel, scheduleAppealRefresh, states } from './appeals';
 import type { AppealSummary, AppealView } from './appeals';
 import type { Standings } from '../results/standings';
 
@@ -15,6 +15,7 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
   const [selection, setSelection] = useState<AppealSummary>();
   const [detail, setDetail] = useState<{ view: AppealView; own: boolean }>(); const [error, setError] = useState<unknown>();
   const [loading, setLoading] = useState(false); const [sending, setSending] = useState(false); const [retry, setRetry] = useState(false);
+  const [readingDetail, setReadingDetail] = useState(false);
   const selectionHeading = useRef<HTMLHeadingElement>(null);
   const accepted = useRef<{ appealId: string; version: string } | undefined>(undefined);
   const pending = useRef<{ appealId: string; version: string; key: string } | undefined>(undefined); const inFlight = useRef(false);
@@ -31,7 +32,9 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
     finally { if (generation === queueSequence.current && !abort.signal.aborted) setLoading(false); }
   }
   async function loadDetail(id: string) {
-    const generation = ++detailSequence.current; detailAbort.current?.abort(); const abort = new AbortController(); detailAbort.current = abort;
+    if (detailAbort.current) return;
+    const generation = detailSequence.current; const abort = new AbortController(); detailAbort.current = abort;
+    setReadingDetail(true);
     try {
       const response = await session.workspace().client('/api/v1/appeals').get<unknown>(`/${encodeURIComponent(id)}`, { signal: abort.signal });
       const view = readView(response.data, tournament); if (view.appealId !== id) throw new ApiProtocolError();
@@ -44,26 +47,31 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
       if (generation !== detailSequence.current || abort.signal.aborted) return;
       setDetail(old => old?.view.appealId === id && BigInt(old.view.version) > BigInt(view.version) ? old : { view, own });
     } catch (e) { if (generation === detailSequence.current && !abort.signal.aborted) setError(e); }
+    finally { if (detailAbort.current === abort) { detailAbort.current = undefined; setReadingDetail(false); } }
   }
   useEffect(() => {
     setItems(undefined); setSelection(undefined); setDetail(undefined); accepted.current = undefined;
-    pending.current = undefined; inFlight.current = false; setSending(false); setRetry(false);
+    pending.current = undefined; inFlight.current = false; setSending(false); setRetry(false); setReadingDetail(false);
     if (tournament) void loadQueue();
-    return () => { ++queueSequence.current; ++detailSequence.current; queueAbort.current?.abort(); detailAbort.current?.abort(); commandAbort.current?.abort(); };
+    return () => { ++queueSequence.current; ++detailSequence.current; queueAbort.current?.abort(); detailAbort.current?.abort(); detailAbort.current = undefined; commandAbort.current?.abort(); };
   }, [tournament]);
   useEffect(() => {
     if (!selection) return;
     const refresh = () => { if (!inFlight.current && !pending.current) void loadDetail(selection.appealId); };
     window.addEventListener('focus', refresh); window.addEventListener('online', refresh);
-    const timer = window.setInterval(refresh, 5000);
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); };
+    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); };
   }, [selection?.appealId, tournament]);
+  const selectedState = detail?.view.state ?? selection?.state;
+  useEffect(() => {
+    if (!selection || sending || retry || readingDetail || selectedState === 'Registered' || selectedState === 'Closed' || selectedState === 'NeedsResolution') return;
+    return scheduleAppealRefresh(() => loadDetail(selection.appealId));
+  }, [selection?.appealId, tournament, selectedState, sending, retry, readingDetail]);
   useEffect(() => { selectionHeading.current?.focus(); }, [selection?.appealId]);
   async function claim(item: AppealSummary) {
     if (inFlight.current) return; inFlight.current = true; setSending(true); setError(undefined);
     const operation = pending.current ?? { appealId: item.appealId, version: item.version, key: crypto.randomUUID() };
     pending.current = operation;
-    ++detailSequence.current; detailAbort.current?.abort();
+    ++detailSequence.current; detailAbort.current?.abort(); detailAbort.current = undefined; setReadingDetail(false);
     setSelection(item); setDetail(undefined);
     const abort = new AbortController(); commandAbort.current = abort;
     try {

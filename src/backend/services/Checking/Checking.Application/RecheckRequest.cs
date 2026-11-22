@@ -11,7 +11,7 @@ public sealed record RecheckRequest(Guid AppealId, Guid RequestId, Guid Solution
     public void Validate()
     {
         if (new[] { AppealId, RequestId, SolutionId, MaterialVersionId, TournamentId, TeamId, TaskId, ResultId, PublicationId, BaseCheckId, RequestedReviewerId }.Contains(Guid.Empty)
-            || ExpectedResultVersion < 1 || !Enum.IsDefined(BaseOutcome) || AcceptedAt < SubmittedAt) throw new ArgumentException("Invalid recheck request.");
+            || ExpectedResultVersion < 1 || !Enum.IsDefined(BaseOutcome)) throw new ArgumentException("Invalid recheck request.");
     }
     public string SemanticHash()
     {

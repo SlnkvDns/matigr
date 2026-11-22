@@ -4,7 +4,7 @@ import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
-import { exactVersion, readList, readView, reviewLabel, taskName } from './appeals';
+import { exactVersion, readList, readView, reviewLabel, scheduleAppealRefresh, taskName } from './appeals';
 import type { AppealView } from './appeals';
 import type { Standings } from '../results/standings';
 import { useStandingsLabels } from '../results/useStandingsLabels';
@@ -31,37 +31,54 @@ function TeamAppeals({ tournament, standings }: { tournament: string; standings:
   const [error, setError] = useState<unknown>(); const [loading, setLoading] = useState(false); const [sending, setSending] = useState(false);
   const [ready, setReady] = useState(false); const [retry, setRetry] = useState(false); const [notice, setNotice] = useState(''); const [blocked, setBlocked] = useState(false);
   const sequence = useRef(0); const reads = useRef<AbortController | undefined>(undefined); const action = useRef<AbortController | undefined>(undefined);
+  const currentRead = useRef<Promise<void> | undefined>(undefined);
   const pending = useRef<{ resultId: string; expectedResultVersion: string; key: string } | undefined>(undefined); const inFlight = useRef(false);
-  async function load(preserveError = false) {
-    const generation = ++sequence.current; reads.current?.abort(); const abort = new AbortController(); reads.current = abort;
-    setLoading(true); setReady(false); if (!preserveError) setError(undefined);
+  function load(preserveError = false) {
+    if (reads.current) return currentRead.current;
+    currentRead.current = read(preserveError);
+    return currentRead.current;
+  }
+  async function read(preserveError: boolean) {
+    if (!tournament) return;
+    const generation = sequence.current; const abort = new AbortController(); reads.current = abort;
+    setLoading(true); if (!preserveError) setError(undefined);
     try {
       const client = session.workspace().client('/api/v1/appeals');
       const response = await client.get<unknown>(`/me?${new URLSearchParams({ tournamentId: tournament })}`, { signal: abort.signal });
       const list = readList(response.data, tournament, team);
-      const details = await Promise.all(list.map(async ({ appealId }) => {
+      const details = await Promise.all(list.map(async ({ appealId, version }) => {
+        const known = latest.current.get(appealId);
+        if (known && BigInt(known.version) >= BigInt(version)) return known;
         const response = await client.get<unknown>(`/${encodeURIComponent(appealId)}`, { signal: abort.signal });
         const view = readView(response.data, tournament);
         if (view.appealId !== appealId || view.teamId !== team) throw new ApiProtocolError();
         return view;
       }));
       if (generation !== sequence.current || abort.signal.aborted) return;
-      const stable = details.map(d => { const old = latest.current.get(d.appealId); const value = old && BigInt(old.version) > BigInt(d.version) ? old : d; latest.current.set(d.appealId, value); return value; });
+      for (const detail of details) {
+        const old = latest.current.get(detail.appealId);
+        if (!old || BigInt(detail.version) >= BigInt(old.version)) latest.current.set(detail.appealId, detail);
+      }
+      const stable = [...latest.current.values()];
       setDetails(stable); setExisting(stable.find(d => d.resultId === resultId)); setReady(true);
     } catch (e) { if (generation === sequence.current && !abort.signal.aborted) setError(e); }
-    finally { if (generation === sequence.current && !abort.signal.aborted) setLoading(false); }
+    finally { if (reads.current === abort) { reads.current = undefined; setLoading(false); } }
   }
   useEffect(() => {
-    setExisting(undefined); setDetails([]); latest.current.clear(); setNotice(''); setBlocked(false); setRetry(false); setSending(false); pending.current = undefined; inFlight.current = false;
+    setExisting(undefined); setDetails([]); setReady(false); setLoading(false); latest.current.clear(); setNotice(''); setBlocked(false); setRetry(false); setSending(false); pending.current = undefined; inFlight.current = false;
     if (tournament) void load();
-    return () => { ++sequence.current; reads.current?.abort(); action.current?.abort(); };
+    return () => { ++sequence.current; reads.current?.abort(); reads.current = undefined; action.current?.abort(); };
   }, [tournament, resultId, version]);
+  const poll = !!tournament && (!ready || details.some(item => item.state !== 'Closed' && item.state !== 'NeedsResolution'));
   useEffect(() => {
     const refresh = () => { if (!inFlight.current) void load(true); };
     window.addEventListener('focus', refresh); window.addEventListener('online', refresh);
-    const timer = window.setInterval(refresh, 5000);
-    return () => { window.clearInterval(timer); window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); };
+    return () => { window.removeEventListener('focus', refresh); window.removeEventListener('online', refresh); };
   }, [tournament, resultId, version]);
+  useEffect(() => {
+    if (!poll) return;
+    return scheduleAppealRefresh(() => inFlight.current ? undefined : load(true), currentRead.current);
+  }, [tournament, resultId, version, poll]);
   async function submit() {
     if (inFlight.current || !ready || existing || blocked || !resultId || !exactVersion(version)) return;
     inFlight.current = true; setSending(true); setError(undefined); const generation = sequence.current;
@@ -72,12 +89,20 @@ function TeamAppeals({ tournament, standings }: { tournament: string; standings:
       if (generation !== sequence.current || abort.signal.aborted) return;
       const value = readView(response.data, tournament);
       if (response.status !== 201 || value.teamId !== team || value.resultId !== resultId) throw new ApiProtocolError();
-      setExisting(value); pending.current = undefined; setRetry(false); setNotice('Апелляция подана. Она появилась в очереди жюри.'); await load(true);
+      const known = latest.current.get(value.appealId);
+      if (!known || BigInt(value.version) >= BigInt(known.version)) latest.current.set(value.appealId, value);
+      setExisting(latest.current.get(value.appealId)); setDetails([...latest.current.values()]);
+      pending.current = undefined; setRetry(false); setNotice('Апелляция подана. Она появилась в очереди жюри.'); await load(true);
     } catch (e) {
       if (generation !== sequence.current || abort.signal.aborted) return;
       setError(e); setRetry(true);
       if (e instanceof ApiError && e.problem?.code === 'WindowClosed') setBlocked(true);
-      if (e instanceof ApiError && e.problem?.code === 'AlreadyAppealed') await load(true);
+      if (e instanceof ApiError && e.problem?.code === 'AlreadyAppealed') {
+        setBlocked(true);
+        // A read started before the command may still contain an empty list. Refresh after it settles.
+        await currentRead.current;
+        if (generation === sequence.current) await load(true);
+      }
     } finally { if (!abort.signal.aborted) { inFlight.current = false; setSending(false); } }
   }
   return <div className="appeals-workspace">
@@ -90,7 +115,7 @@ function TeamAppeals({ tournament, standings }: { tournament: string; standings:
           : <p>Команда может один раз обжаловать опубликованный результат по задаче до завершения турнира.</p>
         : <p>Выберите задачу с опубликованным результатом на странице вашей команды.</p>}
       <div className="appeals-actions">
-        {resultId && exactVersion(version) && !existing && <button className="appeals-button" disabled={!ready || loading || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button>}
+        {resultId && exactVersion(version) && !existing && <button className="appeals-button" disabled={!ready || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button>}
         <Link className="appeals-button appeals-secondary" to={`/results?${new URLSearchParams({ tournamentId: tournament })}`}>К результатам команды</Link>
       </div>
     </section>

@@ -1,6 +1,6 @@
-using System.Text;
-using System.Text.Json;
+using System.Net.WebSockets;
 using Matigr.Results.Application;
+using Matigr.Results.Infrastructure;
 using Npgsql;
 using HttpResults = Microsoft.AspNetCore.Http.Results;
 
@@ -8,46 +8,59 @@ namespace Matigr.Results.Api;
 
 public static class StandingsEvents
 {
-    public static void MapStandingsEvents(this WebApplication app)
+    public static void MapStandingsEvents(this WebApplication app) =>
+        app.MapMethods("/api/v1/results/tournaments/{tournamentId}/standings/events", ["GET", "CONNECT"], StreamAsync);
+
+    private static async Task StreamAsync(string tournamentId, HttpContext context, StandingsCache cache, IHostApplicationLifetime lifetime)
     {
-        var interval = app.Configuration.GetValue<int?>("Snapshots:PollMilliseconds") ?? 1000;
-        if (interval < 1) throw new InvalidOperationException("Snapshot polling interval must be positive.");
-        app.MapGet("/api/v1/results/tournaments/{tournamentId}/standings/events", async (string tournamentId,
-            HttpContext context, ISnapshotVersions versions) =>
+        context.Response.Headers.CacheControl = "no-store";
+        if (!Guid.TryParse(tournamentId, out var tournament))
         {
-            if (!Guid.TryParse(tournamentId, out var tournament)) return Error(context, 404, "TournamentNotFound");
-            // Enter the subscription before reading the handshake. Every connection observes its own DB,
-            // so no competing broker queue or process-local notification can strand another replica.
-            string initial;
-            try { initial = await versions.CurrentAsync(tournament, context.RequestAborted); }
-            catch (ResultReadException e) { return Error(context, e.Status, e.Code); }
-            catch (NpgsqlException) { return Error(context, 503, "DependencyUnavailable"); }
-            context.Response.Headers.CacheControl = "no-cache";
-            context.Response.Headers["X-Accel-Buffering"] = "no";
-            return HttpResults.Stream(async stream =>
+            await Error(context, 404, "TournamentNotFound");
+            return;
+        }
+        if (!context.WebSockets.IsWebSocketRequest)
+        {
+            await Error(context, 400, "WebSocketRequired");
+            return;
+        }
+        using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, lifetime.ApplicationStopping);
+        try
+        {
+            using var subscription = await cache.SubscribeAsync(tournament, stop.Token);
+            using var socket = await context.WebSockets.AcceptWebSocketAsync();
+            var send = SendAsync(socket, subscription, stop.Token);
+            var receive = socket.ReceiveAsync(new byte[1].AsMemory(), stop.Token).AsTask();
+            var finished = await Task.WhenAny(send, receive);
+            if (finished == receive && !receive.IsCompletedSuccessfully) socket.Abort();
+            stop.Cancel();
+            try { await Task.WhenAll(send, receive); }
+            catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+            catch (WebSocketException) { }
+            if (socket.State == WebSocketState.CloseReceived)
             {
-                var ct = context.RequestAborted; var current = initial;
-                async Task Emit(string version) {
-                    var json = JsonSerializer.Serialize(new { tournamentId = tournament.ToString("D"), snapshotVersion = version });
-                    await stream.WriteAsync(Encoding.UTF8.GetBytes($"event: snapshot\ndata: {json}\n\n"), ct);
-                    await stream.FlushAsync(ct);
-                }
-                try
-                {
-                    await Emit(current);
-                    while (!ct.IsCancellationRequested)
-                    {
-                        await Task.Delay(interval, ct);
-                        var next = await versions.CurrentAsync(tournament, ct);
-                        if (next != current) { await Emit(next); current = next; }
-                        else { await stream.WriteAsync(Encoding.UTF8.GetBytes(": keepalive\n\n"), ct); await stream.FlushAsync(ct); }
-                    }
-                }
-                catch (OperationCanceledException) when (ct.IsCancellationRequested) { }
-                catch (NpgsqlException) { /* Close; the client reconnects and reconciles with GET. No private diagnostic payload. */ }
-            }, contentType: "text/event-stream");
-        });
+                using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(2));
+                await socket.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, null, timeout.Token);
+            }
+            else socket.Abort();
+        }
+        catch (ResultReadException e) { await Error(context, e.Status, e.Code); }
+        catch (NpgsqlException) { await Error(context, 503, "DependencyUnavailable"); }
+        catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
+        catch (WebSocketException) { }
     }
-    private static IResult Error(HttpContext context, int status, string code) => HttpResults.Problem(statusCode: status,
-        title: "Snapshot unavailable", extensions: new Dictionary<string, object?> { ["code"] = code, ["correlationId"] = context.TraceIdentifier });
+
+    private static async Task SendAsync(WebSocket socket, StandingsCache.Subscription subscription, CancellationToken ct)
+    {
+        await foreach (var snapshot in subscription.Snapshots.ReadAllAsync(ct))
+        {
+            using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            timeout.CancelAfter(TimeSpan.FromSeconds(10));
+            await socket.SendAsync(snapshot.Json.AsMemory(), WebSocketMessageType.Text, endOfMessage: true, timeout.Token);
+        }
+    }
+
+    private static Task Error(HttpContext context, int status, string code) => HttpResults.Problem(statusCode: status,
+        title: "Snapshot unavailable", extensions: new Dictionary<string, object?> { ["code"] = code, ["correlationId"] = context.TraceIdentifier })
+        .ExecuteAsync(context);
 }

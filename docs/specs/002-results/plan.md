@@ -8,7 +8,7 @@
 
 Results владеет A8/P7: переводом доверенного вердикта в баллы, текущим результатом, историей публикаций и таблицей. Не назначает жюри и не решает квоту/допуск апелляции. Это владелец бизнес-данных, а не восстанавливаемый из браузерного кэша экран.
 
-Проекты в `src/backend/services/Results/`: `Results.Api` (ASP.NET Core .NET 10, публичные/private/internal HTTP и SSE, host workers), `Results.Application` (ApplyCheckCompleted, GetStandings, GetTeamResults, GetAppealBasis), `Results.Domain` (TeamTaskResult, правила применения/баллов), `Results.Infrastructure` (своя PostgreSQL, EF Core/SQL, broker, inbox/outbox). Domain не знает HTTP/Checking.Domain. Доставка CheckCompleted переводится в локальную команду Application через adapter.
+Проекты в `src/backend/services/Results/`: `Results.Api` (ASP.NET Core .NET 10, HTTP и WebSocket), `Results.Application` (ApplyCheckCompleted, GetStandings, GetTeamResults, GetAppealBasis), `Results.Domain` (TeamTaskResult и правила начисления), `Results.Infrastructure` (PostgreSQL, EF Core/SQL, broker, inbox/outbox, кэш снимков). Адаптер переводит доставку CheckCompleted в локальную команду Application.
 
 Frontend feature `results` в общем React/TypeScript/Vite app: анонимная таблица всех команд, баллы по задачам/сумма/место, состояние соединения; личный экран результата с resultId/version для подачи апелляции. Клиент не рассчитывает авторитетные места/баллы, не выбирает новый expectedResultVersion для обхода конфликта. Кнопка апелляции вызывает Appeals, а не Results.
 
@@ -56,15 +56,15 @@ Correct → полная фиксированная стоимость; Incorrec
 | Метод и путь | Доступ | Ответ |
 | --- | --- | --- |
 | GET `/api/v1/results/tournaments/{tournamentId}/standings` | Анонимный | 200: snapshotVersion, команды/задачи, ячейки со статусом и score?, total/rank; ETag снимка. Нет материала, reviewer, назначений, истории апелляции |
-| GET `/api/v1/results/tournaments/{tournamentId}/standings/events` | Анонимный SSE | Только tournamentId/snapshotVersion и технический статус соединения; без частных данных |
+| WebSocket `/api/v1/results/tournaments/{tournamentId}/standings/events` | Анонимный поток снимков | Первый кадр и последующие изменения содержат публичный `StandingsSnapshot` |
 | GET `/api/v1/results/me/tournaments/{tournamentId}/results` | Team subject в scope | 200: свои опубликованные результаты, resultId/resultVersion/publicationId, исход/баллы и минимальная подсказка доступности; окончательное право проверяет Appeals |
 | GET `/internal/v1/results/{resultId}/appeal-basis?expectedResultVersion=…` | Только доверенный Appeals service | Канонические 200/404/409/503 и поля — [REST-стык](../../architecture/implementation-contracts.md#3-синхронный-стык-results--appeals) |
 
 Нет POST начисления из браузера, ручной публикации, изменения стоимости, пересчёта по новому регламенту или управления турниром. Нет дополнительного публичного endpoint истории/авторства без решения Q16.
 
-T04: сначала подписка SSE, затем GET; сервер после регистрации подписки читает/посылает текущую snapshotVersion. Клиент делает GET и сверяет, что его версия не меньше последней полученной; событие во время GET вызывает повтор, ответы с меньшей версией не заменяют новые. На reconnect всегда новый handshake/GET; сохранение полного event replay/Last-Event-ID не требуется. Дополнительная периодическая сверка страхует потерю live-сигнала и restart publisher. SSE — подсказка инвалидировать, не единственный носитель истины.
+T04, уточнение от 22 ноября: сервер регистрирует подписку, проверяет текущую версию и отправляет готовый снимок. После переподключения действует та же процедура. Клиент сравнивает точные версии и включает условный HTTP-опрос только при деградации соединения. HTTP GET проверяет версию по БД и возвращает `304` при совпадении `If-None-Match`.
 
-Snapshot GET читает roster/results/snapshotVersion в одной согласованной read-only транзакции (предложение: Repeatable Read), а не отдельными запросами из разных commit. При нескольких API replicas каждая активная SSE replica должна узнавать изменения: для MVP допускается наблюдение snapshotVersion своей БД с настраиваемой частотой, вместо общей competing consumer очереди уведомлений. Первый handshake и периодическая сверка закрывают окно пропуска. Измеряемый лаг/SLO/частота — Q10; нельзя объявить незаданный интервал гарантией.
+При обновлении кэша реплика собирает roster, результаты и версию в одной транзакции Repeatable Read. Одновременные запросы на один турнир используют одну сборку актуальной версии. Триггер PostgreSQL сообщает слушателям реплик о закоммиченной смене версии. После нового LISTEN и после паузы до следующего уведомления слушатель сверяет версии активных турниров. Медленный WebSocket получает последний готовый снимок из очереди ёмкостью один. Измеряемый лаг и SLO остаются Q10.
 
 ## 5. Интеграционные события
 
@@ -93,8 +93,8 @@ Snapshot GET читает roster/results/snapshotVersion в одной согл�
 - Broker/API restart, падение до/после commit/confirm/ack: outbox/inbox и receipts гарантируют повторяемый эффект при повторной доставке; exactly-once transport не предполагается.
 - Нет rule/базы: сохранять наблюдаемую зависимость/Deferred; не начислять 0 и не подтверждать применение. Постоянное несоответствие — Rejected, Appeals → NeedsResolution; операционный redrive не меняет базовую версию.
 - Подтверждение Applied отправляется после commit. Следующий GET видит опубликованную версию или новее при согласованном чтении primary; read replica с неопределённым lag не вводится в MVP. No-op ack не обещает новый publishedAt.
-- SSE оборвался/уведомление пропущено: повторное подключение и GET/сверка snapshotVersion восстанавливают состояние. Ошибка приватного результата не открывает private DTO через публичный fallback.
-- Метрики: input/outbox lag, Deferred/Rejected/quarantine, CAS conflicts, время snapshot query/transaction, reconnect/SSE lag. Логи связывают evaluationId/resultId/appealId/requestId/messageId; токен/материал не логировать. Backup/restore проверять согласованным набором собственных таблиц, не заменой fixtures поверх истории.
+- Разрыв WebSocket: повторное подключение и условный GET восстанавливают состояние. Частные чтения по-прежнему выполняются через защищённый HTTP.
+- Метрики: input/outbox lag, Deferred/Rejected/quarantine, CAS conflicts, время сборки снимка, reconnect/WebSocket lag. Транспортные агрегаты собирает отдельный периодический наблюдатель. Логи связывают evaluationId/resultId/appealId/requestId/messageId. Backup/restore проверять согласованным набором собственных таблиц.
 
 ## 8. Стратегия тестирования
 
@@ -103,14 +103,14 @@ Snapshot GET читает roster/results/snapshotVersion в одной согл�
 | Unit | Correct/Incorrect/no result, замена вклада, no-op, изменённый outcome при равном score, immutable cost, dense rank 1,1,2 и группы равных; RS-A01–03/06/07/18/20/24/25/31 |
 | PostgreSQL integration | UNIQUE/CAS, receipt перед CAS, два Initial/две задачи одной команды конкурентно, snapshot read consistency, исходная история/no-op/source, неподходящий solution, rollback; RS-A04/05/08/09/13/14/15/17/22/23 |
 | Broker/HTTP integration | Crash windows/дубли, неизвестное правило/зависимость и redrive, kind/origin/schema, internal basis auth/errors, ранний Applied для Appeals, публикация после конца; RS-A10/16/26–30 |
-| Frontend integration/contract | SSE handshake/GET gap/reconnect/старая версия, никакой утечки через public DTO/SSE, стабильный контракт внутреннего основания и семи сообщений; RS-A11/12/19/21 |
+| Frontend integration/contract | WebSocket handshake/GET/reconnect, одна сборка при одновременных GET, условный GET, монотонность версии, публичный allowlist и контракт внутреннего основания. RS-A11/12/19/21 |
 | E2E | V1 анонимная таблица после вердикта, V4 изменение места нескольких команд и no-op закрытие, V6 потеря соединения/рестарт/late completion; все три сервиса и браузер |
 
 Integration выполняются на PostgreSQL и настоящем broker из изолированного окружения, не in-memory ORM. Проверки отслеживают версии/IDs и eventual convergence, не fixed sleep. Query/performance smoke измеряет выбранную сериализацию, но нагрузочный бюджет требует Q10. Fixture v1 использует согласованные 10/20 целых баллов, pending без score и пустую сумму "0"; это локальный тестовый профиль.
 
 ## 9. Принятые решения и ограничения
 
-Приняты SSE T04, общая snapshot lock/query read side и отображение pending/пустой суммы. Q09 для локальных fixtures уточнён явно (10/20 целых, строки JSON); версии T02/T03 закреплены в CHK-INF-01. Остаются Q10 — объём/лаг; Q13 — retention/эксплуатационные параметры. Публичные поля ограничиваются уже согласованной таблицей; Q16 не разрешает публиковать историю/авторов. Все проверки совместимости включены в [общую матрицу](../../architecture/implementation-contracts.md#5-проверка-согласованности).
+Исходный T04 с SSE был принят 23 октября. Транспорт и чтение таблицы обновлены 22 ноября. Общая блокировка версии, pending и пустая сумма сохраняют согласованную семантику. Q09 для локальных fixtures уточнён явно (10/20 целых, строки JSON). Остаются Q10 для объёма и лага, Q13 для retention и эксплуатационных параметров и Q16 для расширения публичных полей. Проверки совместимости включены в [общую матрицу](../../architecture/implementation-contracts.md#5-проверка-согласованности).
 
 Текущая реализация 24 октября: RES-BE-01–04 и RES-UT-01/02 завершены, см. журнал и [границы adapters](../../../src/backend/services/Results/Results.Infrastructure/README.md). Standings/private/internal HTTP реализованы; SQL rank case-наборы выполняются на настоящей PostgreSQL. Runtime consumer/outbox и SSE выполнены в RES-INT-02/RES-BE-05, Appeal application реализована в RES-BE-06.
 

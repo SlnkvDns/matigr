@@ -12,16 +12,18 @@ public sealed class PostgresTransportStore(TransportOptions options)
     private static NpgsqlCommand Command(NpgsqlConnection c, string sql, params object[] args)
     { var cmd = new NpgsqlCommand(sql, c); foreach (var arg in args) cmd.Parameters.AddWithValue(arg); return cmd; }
     private static DateTimeOffset Stamp(DateTimeOffset value) => value.AddTicks(-(value.Ticks % 10));
-    public async Task ObserveAsync(TransportHealth health, CancellationToken ct)
+    public async Task<TransportStatistics> ReadStatisticsAsync(CancellationToken ct)
     {
+        long pending = 0, deferred = 0, quarantined = 0;
+        double oldest = 0;
         await using var c = await Open(ct);
         await using (var cmd = Command(c, "SELECT count(*), COALESCE(max(EXTRACT(epoch FROM now() - created_at)),0)::double precision FROM outbox WHERE status = 'Pending'"))
         await using (var reader = await cmd.ExecuteReaderAsync(ct))
-            if (await reader.ReadAsync(ct)) { health.Pending = reader.GetInt64(0); TransportHealth.Lag.Record(Math.Max(0, reader.GetDouble(1))); }
+            if (await reader.ReadAsync(ct)) { pending = reader.GetInt64(0); oldest = Math.Max(0, reader.GetDouble(1)); }
         await using var failures = Command(c, "SELECT state, count(*) FROM processing_failures WHERE state IN ('Deferred','Quarantined') GROUP BY state");
-        health.Deferred = 0; health.Quarantined = 0;
         await using var rows = await failures.ExecuteReaderAsync(ct);
-        while (await rows.ReadAsync(ct)) { if (rows.GetString(0) == "Deferred") health.Deferred = rows.GetInt64(1); else health.Quarantined = rows.GetInt64(1); }
+        while (await rows.ReadAsync(ct)) { if (rows.GetString(0) == "Deferred") deferred = rows.GetInt64(1); else quarantined = rows.GetInt64(1); }
+        return new(pending, deferred, quarantined, oldest);
     }
 
     public async Task<Outgoing?> ClaimAsync(CancellationToken ct)

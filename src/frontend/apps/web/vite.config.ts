@@ -17,7 +17,7 @@ export default defineConfig(({ mode }) => {
       },
       proxy: {
         '/api/v1/checking': { target: checkingTarget },
-        '/api/v1/results': { target: resultsTarget },
+        '/api/v1/results': { target: resultsTarget, ws: true },
         '/api/v1/appeals': { target: appealsTarget },
         '/dev/v1/session': { target: checkingTarget },
       },

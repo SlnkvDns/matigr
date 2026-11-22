@@ -4,24 +4,29 @@ import type { Standings } from './standings';
 
 type Connection = 'connecting' | 'live' | 'degraded';
 type State = Readonly<{ snapshot: Standings | undefined; error: unknown; loading: boolean; connection: Connection }>;
-export type SnapshotSubscription = (tournament: string, version: (value: string) => void, state: (live: boolean) => void) => () => void;
-const versionPattern = /^(0|[1-9][0-9]*)$/;
-export const subscribeSnapshots: SnapshotSubscription = (tournament, version, state) => {
-  if (typeof EventSource === 'undefined') { state(false); return () => {}; }
-  // Anonymous stream: no bearer or session-derived fields; withCredentials is false.
-  const source = new EventSource(`/api/v1/results/tournaments/${encodeURIComponent(tournament)}/standings/events`, { withCredentials: false });
-  source.onopen = () => state(true);
-  source.onerror = () => state(false);
-  source.addEventListener('snapshot', event => {
+export type SnapshotSubscription = (tournament: string, snapshot: (value: unknown) => void, disconnected: () => void) => () => void;
+
+export const subscribeSnapshots: SnapshotSubscription = (tournament, snapshot, disconnected) => {
+  if (typeof WebSocket === 'undefined') { disconnected(); return () => {}; }
+  const url = new URL(`/api/v1/results/tournaments/${encodeURIComponent(tournament)}/standings/events`, window.location.href);
+  url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
+  // This is the public feed. The browser sends no session bearer or private payload.
+  const socket = new WebSocket(url);
+  function close() {
+    clearTimeout(handshake);
+    socket.onmessage = socket.onerror = socket.onclose = null;
+    socket.close();
+  }
+  function fail() { close(); disconnected(); }
+  const handshake = setTimeout(fail, 10_000);
+  socket.onerror = socket.onclose = fail;
+  socket.onmessage = event => {
     try {
-      const value: unknown = JSON.parse((event as MessageEvent<string>).data);
-      if (!value || typeof value !== 'object') throw new Error();
-      const data = value as Record<string, unknown>;
-      if (Object.keys(data).length !== 2 || data.tournamentId !== tournament || typeof data.snapshotVersion !== 'string' || !versionPattern.test(data.snapshotVersion)) throw new Error();
-      version(data.snapshotVersion);
-    } catch { state(false); }
-  });
-  return () => { source.close(); source.onopen = null; source.onerror = null; };
+      snapshot(JSON.parse(event.data as string));
+      clearTimeout(handshake);
+    } catch { fail(); }
+  };
+  return close;
 };
 
 export class StandingsController {
@@ -29,65 +34,77 @@ export class StandingsController {
   #listeners = new Set<() => void>();
   #generation = 0;
   #active = false;
-  #inFlight = false;
-  #queued = false;
-  #wanted = 0n;
-  #live: boolean | undefined;
   #cancel: AbortController | undefined;
   #unsubscribe: (() => void) | undefined;
-  #periodic: ReturnType<typeof setInterval> | undefined;
   #retry: ReturnType<typeof setTimeout> | undefined;
+  #failedConnections = 0;
   constructor(readonly tournament: string,
-    private readonly read: (signal: AbortSignal) => Promise<unknown> = async signal => (await createHttpClient('/api/v1/results').get<unknown>(`/tournaments/${encodeURIComponent(tournament)}/standings`, { signal })).data,
+    private readonly read: (signal: AbortSignal, currentVersion?: string) => Promise<unknown> = async (signal, currentVersion) => {
+      const response = await createHttpClient('/api/v1/results').get<unknown>(`/tournaments/${encodeURIComponent(tournament)}/standings`, {
+        signal, ...(currentVersion === undefined ? {} : { ifNoneMatch: `"${currentVersion}"` }),
+      });
+      return response.data;
+    },
     private readonly events: SnapshotSubscription = subscribeSnapshots,
-    private readonly reconcileMilliseconds = 10000) {
+    private readonly reconcileMilliseconds = 10_000) {
     if (!Number.isFinite(reconcileMilliseconds) || reconcileMilliseconds < 1) throw new Error('Invalid reconciliation interval');
   }
   getSnapshot = () => this.#state;
   subscribe = (listener: () => void) => { this.#listeners.add(listener); return () => { this.#listeners.delete(listener); }; };
   #publish(update: Partial<State>) { this.#state = Object.freeze({ ...this.#state, ...update }); for (const listener of this.#listeners) listener(); }
+  #store(value: unknown) {
+    const snapshot = readStandings(value, this.tournament);
+    if (!this.#state.snapshot || BigInt(snapshot.snapshotVersion) >= BigInt(this.#state.snapshot.snapshotVersion))
+      this.#publish({ snapshot, error: undefined });
+  }
   start() {
-    this.stop(); if (!this.tournament) return;
-    const generation = ++this.#generation; this.#active = true; this.#inFlight = false; this.#queued = false; this.#live = undefined;
-    // Register the stream before GET; open/reconnect always triggers a fresh GET as well.
-    this.#unsubscribe = this.events(this.tournament, value => {
-      if (!this.#active || generation !== this.#generation || !versionPattern.test(value)) return;
-      if (BigInt(value) > this.#wanted) this.#wanted = BigInt(value);
-      if (this.#wanted > BigInt(this.#state.snapshot?.snapshotVersion ?? '0')) void this.refresh();
-    }, live => {
-      if (!this.#active || generation !== this.#generation) return;
-      this.#live = live; this.#publish({ connection: live ? 'live' : 'degraded' });
-      if (live) void this.refresh();
-    });
-    this.#periodic = setInterval(() => { void this.refresh(); }, this.reconcileMilliseconds);
+    this.stop();
+    if (!this.tournament) return;
+    this.#active = true;
+    this.#failedConnections = 0;
+    this.#publish({ loading: false, connection: 'connecting' });
+    this.#connect(this.#generation);
     void this.refresh();
   }
+  #connect(generation: number) {
+    this.#unsubscribe?.();
+    const disconnected = () => {
+      if (!this.#active || generation !== this.#generation || this.#retry !== undefined) return;
+      this.#publish({ connection: 'degraded' });
+      const delay = this.reconcileMilliseconds * 2 ** Math.min(this.#failedConnections++, 3);
+      this.#retry = setTimeout(() => {
+        this.#retry = undefined;
+        this.#connect(generation);
+        if (this.#state.connection !== 'live') void this.refresh();
+      }, delay);
+    };
+    try {
+      this.#unsubscribe = this.events(this.tournament, value => {
+        if (!this.#active || generation !== this.#generation) return;
+        this.#store(value);
+        clearTimeout(this.#retry); this.#retry = undefined;
+        this.#failedConnections = 0;
+        this.#publish({ connection: 'live', error: undefined });
+      }, disconnected);
+    } catch { disconnected(); }
+  }
   refresh = async () => {
-    if (!this.#active) return;
-    if (this.#inFlight) { this.#queued = true; return; }
-    const generation = this.#generation; this.#inFlight = true; this.#queued = false;
+    if (!this.#active || this.#cancel) return;
     const cancellation = new AbortController(); this.#cancel = cancellation;
     this.#publish({ loading: true });
     try {
-      const value = readStandings(await this.read(cancellation.signal), this.tournament);
-      if (!this.#active || generation !== this.#generation || cancellation.signal.aborted) return;
-      const current = BigInt(this.#state.snapshot?.snapshotVersion ?? '0');
-      if (BigInt(value.snapshotVersion) >= current) this.#publish({ snapshot: value, error: undefined, connection: this.#live === undefined ? 'connecting' : this.#live ? 'live' : 'degraded' });
-      // An event may have arrived during GET. Retry after a bounded technical delay, never hot-loop a stale replica.
-      if (BigInt(value.snapshotVersion) < this.#wanted) {
-        clearTimeout(this.#retry); this.#retry = setTimeout(() => { void this.refresh(); }, Math.min(1000, this.reconcileMilliseconds));
-      }
+      const value = await this.read(cancellation.signal, this.#state.snapshot?.snapshotVersion);
+      if (cancellation.signal.aborted) return;
+      if (value !== undefined || !this.#state.snapshot) this.#store(value);
+      this.#publish({ error: undefined });
     } catch (error) {
-      if (this.#active && generation === this.#generation && !cancellation.signal.aborted) this.#publish({ error, connection: 'degraded' });
+      if (!cancellation.signal.aborted && this.#state.connection !== 'live') this.#publish({ error, connection: 'degraded' });
     } finally {
-      if (this.#active && generation === this.#generation) {
-        this.#inFlight = false; this.#publish({ loading: false });
-        if (this.#queued) { this.#queued = false; void this.refresh(); }
-      }
+      if (this.#cancel === cancellation) { this.#cancel = undefined; this.#publish({ loading: false }); }
     }
   };
   stop() {
-    this.#active = false; ++this.#generation; this.#cancel?.abort(); this.#unsubscribe?.();
-    clearInterval(this.#periodic); clearTimeout(this.#retry); this.#unsubscribe = undefined;
+    this.#active = false; ++this.#generation; this.#cancel?.abort(); this.#cancel = undefined; this.#unsubscribe?.();
+    clearTimeout(this.#retry); this.#retry = undefined; this.#unsubscribe = undefined;
   }
 }

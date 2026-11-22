@@ -15,9 +15,12 @@ public static class CheckingStorageRegistration
         var pageSize = configuredPageSize is null ? 50 : int.Parse(configuredPageSize, System.Globalization.CultureInfo.InvariantCulture);
         if (pageSize < 1 || pageSize == int.MaxValue) throw new InvalidOperationException("Invalid technical queue page size.");
         services.AddSingleton(new QueueReadOptions(pageSize));
-        services.AddScoped<ICheckingWork>(provider => new CheckingWork(provider.GetRequiredService<CheckingDbContext>(),
+        services.AddScoped(provider => new CheckingWork(provider.GetRequiredService<CheckingDbContext>(),
             provider.GetRequiredService<StorageProtection>(), provider.GetService<IReadOnlyMaterialStore>() ?? new UnconfiguredMaterialStore(),
             provider.GetRequiredService<TimeProvider>(), provider.GetRequiredService<QueueReadOptions>()));
+        services.AddScoped<ICheckingCommands>(provider => provider.GetRequiredService<CheckingWork>());
+        services.AddScoped<ICheckingReads>(provider => provider.GetRequiredService<CheckingWork>());
+        services.AddScoped<ICheckingMaterial>(provider => provider.GetRequiredService<CheckingWork>());
         services.AddDbContext<CheckingDbContext>(options => options.UseNpgsql(
             configuration.GetConnectionString("Checking")
             ?? throw new InvalidOperationException("Checking connection string is required.")));

@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Matigr.Checking.Infrastructure;
+using Matigr.Checking.Contracts;
 using Matigr.Transport;
 
 namespace Matigr.Checking.Api.Tests;
@@ -39,8 +40,9 @@ public class RuntimeSchemaTests
         var invalidDate = Read("check-completed.initial"); invalidDate["occurredAt"] = "2026-10-23Z";
         Assert.Throws<InvalidMessageException>(() => schema.Validate(JsonSerializer.SerializeToElement(invalidDate)));
         var selected = Read("recheck-assigned.selected"); selected["payload"]!["reviewerId"] = "different";
-        var contracts = new TransportSchemas(new Dictionary<string, WireSchema>(), new Dictionary<string, WireSchema> { ["route"] = new(assembly, "recheck-assigned.v1.schema.json") });
-        Assert.Throws<InvalidMessageException>(() => contracts.Validate(JsonSerializer.SerializeToElement(selected), "route", true));
+        const string route = "checking.recheck-assigned.v1";
+        var contracts = new TransportSchemas(new Dictionary<string, WireSchema>(), new Dictionary<string, WireSchema> { [route] = new(assembly, "recheck-assigned.v1.schema.json") }, CheckingEventRules.Validate);
+        Assert.Throws<InvalidMessageException>(() => contracts.Validate(JsonSerializer.SerializeToElement(selected), route, true));
         var rename = Read("check-completed.appeal"); rename["payload"]!["requestId"] = rename["payload"]!["recheckRequestId"]!.GetValue<string>();
         rename["payload"]!.AsObject().Remove("recheckRequestId");
         Assert.Throws<InvalidMessageException>(() => schema.Validate(JsonSerializer.SerializeToElement(rename)));

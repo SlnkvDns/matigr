@@ -20,7 +20,7 @@
 | RES-BE-02 | V1 | RES-BE-01, CHK-INF-04 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Создать миграции unique result/evaluation/publication, snapshots/inbox/outbox/diagnostics и идемпотентный seed roster/rules. Проверка: checksum/version mismatch не меняет стоимость; тип баллов и JSON точны по принятому Q09/T07 | Выполнена |
 | RES-BE-03 | V1 | RES-BE-02, RES-INT-01 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Реализовать первичный ApplyCheckCompleted: receipt до CAS expected=0, lock порядка снимка/результата, публикация/acknowledgement одним commit, конфликт второго Initial. Проверка: rollback не оставляет частичного результата, один checkId не применяется повторно; маршрут Appeal подключается отдельно | Выполнена |
 | RES-BE-04 | V1/V3 | RES-BE-03, RES-INT-01 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Реализовать anonymous standings, private team results и internal appeal-basis. Snapshot query читает одну согласованную версию и вычисляет sum/dense rank; internal GET проверяет expected version/доверенный service. Проверка: все маршруты/DTO/errors совпадают с контрактом | Выполнена |
-| RES-BE-05 | V1/V6 | RES-BE-04 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Реализовать SSE invalidate/handshake после регистрации подписки и наблюдение snapshotVersion для каждой API replica. Проверка: только public поля; reconnect/пропуск сигнала восстанавливается GET; технические интервалы настраиваются, не объявлены SLO | Выполнена |
+| RES-BE-05 | V1/V6 | RES-BE-04 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Первоначальный SSE обновлён 22 ноября до WebSocket со снимками, кэшем и общим слушателем на реплику | Выполнена |
 | RES-BE-06 | V3/V4 | RES-BE-03 | Добавить применение Appeal: проверку immutable basis/версии, замену вклада, changed/no-op receipts и постоянный reject без rebasing. Проверка: no-op сохраняет источник/публикацию, SeniorEscalation передаёт actual lineage; V1 не ждёт этого маршрута | Выполнена |
 
 ## Интеграция
@@ -36,7 +36,7 @@
 | ID | Сценарий | Зависимости | Работа и проверяемый результат | Статус |
 | --- | --- | --- | --- | --- |
 | RES-FE-01 | V1 | CHK-FE-01, RES-BE-04 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Добавить results feature: анонимная таблица всех команд/задач, score/status/total/dense rank по DTO. Проверка component tests: равные места, pending не равен Incorrect, браузер не определяет итоговые баллы/места | Выполнена |
-| RES-FE-02 | V1/V6 | RES-FE-01, RES-BE-05 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Подключить SSE, version reconciliation, GET/reconnect и видимость деградации. Проверка frontend tests: событие во время GET/старый ответ не откатывает снимок; новый anonymous browser видит обновление | Выполнена |
+| RES-FE-02 | V1/V6 | RES-FE-01, RES-BE-05 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). С 22 ноября клиент применяет снимки из WebSocket и сверяется условным GET при потере канала | Выполнена |
 | RES-FE-03 | V3 | RES-FE-01, CHK-FE-02, RES-BE-04 | Добавить личные результаты и передачу resultId/expectedResultVersion в appeals route, без локальной выдачи права. Проверка: смена subject очищает private кэш; отображается ожидание результата, недоступные поля не попадают в публичную таблицу | Выполнена |
 
 ## Unit-тестирование
@@ -53,14 +53,14 @@
 | RES-IT-01 | V1 | RES-BE-03, RES-UT-01, RES-UT-02 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). Настоящая PostgreSQL: duplicate check/new message, два Initial, чужой solution, две задачи одной команды одновременно, history/snapshot commit/rollback. RS-A04/05/09/13–15/17/23; no-op/stale Appeal проверяются отдельно | Выполнена |
 | RES-IT-02 | V1/V6 | RES-INT-02, RES-IT-01 | Broker/host failures первичного результата до/после commit/ack/confirm, unavailable scoring dependency→defer→redrive, poison schema, idempotent receipts и Published snapshot после Applied. RS-A09/10/16/17/26/29/30; нет фиктивного 0/успеха | Выполнена |
 | RES-IT-03 | V1/V3/V4 | RES-BE-04, RES-INT-02, CHK-BE-04, RES-IT-01 | **Выполнена 24 октября 2026 года**, см. [журнал](../../implementation/progress.md). HTTP auth/public-field allowlist/internal basis errors и consistent snapshot под конкурирующими commit; реальные SQL dense ranks и team/table equality. RS-A13/14/18–21/23–26/31; чужая команда не получает private данные | Выполнена |
-| RES-IT-04 | V1/V6 | RES-BE-05, RES-IT-03 | SSE/GET gap: commit между subscribe/handshake/GET, disconnect/reconnect, пропуск invalidation, две API replicas, version monotonic UI. RS-A11/12/19/21; метрики lag без обещания неустановленного Q10 | Выполнена |
+| RES-IT-04 | V1/V6 | RES-BE-05, RES-IT-03 | Первоначальная приёмка SSE. Текущий регрессионный сценарий проверяет WebSocket: коммит при handshake, две реплики, переподключение, монотонность клиента. RS-A11/12/19/21 | Выполнена |
 | RES-IT-05 | V3/V4/V5 | RES-BE-06, RES-IT-01, RES-INT-02 | Реальные PostgreSQL/broker: stale basis, no-op CAS/replay, смена outcome при равном score, чужой материал, senior appeal lineage, late completion и crash окна receipt. RS-A06–09/22/27/28; никакого двойного вклада/нового publishedAt при no-op | Выполнена |
 
 ## End-to-end и порядок приёмки
 
 | ID | Сценарий | Зависимости | Проверяемый результат | Статус |
 | --- | --- | --- | --- | --- |
-| RES-E2E-01 | V1 | CHK-E2E-01, RES-FE-02, RES-IT-03 | Расширить общий V1 тестами второго анонимного браузера и командного экрана: автоматически опубликованные scores/total/rank совпадают; public HTTP/SSE без входа и без private полей. Не дублировать setup базового V1 | Выполнена |
+| RES-E2E-01 | V1 | CHK-E2E-01, RES-FE-02, RES-IT-03 | Общий V1 с анонимным и командным экранами: совпадают опубликованные scores/total/rank. Текущий runtime-скрипт проверяет публикацию по WebSocket, условный GET и переподключение | Выполнена |
 | RES-E2E-02 | V4 | RES-E2E-01, APL-FE-03, APL-INT-03, APL-IT-03, RES-INT-03 | Через реальную апелляцию изменить вердикт/баллы, проверить замену вклада и места нескольких команд/1,1,2. Проверить no-op без нового publishedAt и сохранённую историю. Это gate таблицы V4; полное закрытие процесса проверяет APL-E2E-03 | Выполнена |
 | RES-E2E-03 | V6 | RES-E2E-01, RES-IT-02, RES-IT-04 | Браузер отключён при обновлении, API/broker restarted, уведомление пропущено: после reconnect GET восстанавливает итоговую версию. Повтор событий не меняет total/version/publication повторно. Измерить snapshot/transaction smoke и записать ограничение Q10 без выдуманного нагрузочного порога | Выполнена |
 

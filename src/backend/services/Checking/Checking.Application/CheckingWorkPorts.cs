@@ -4,7 +4,7 @@ using Matigr.Checking.Application.Identity;
 
 namespace Matigr.Checking.Application;
 
-// Published HTTP views, separate from domain/persistence records. Versions stay exact strings.
+// Published HTTP views and consumer-specific ports. Versions stay exact strings.
 public sealed record CheckView(string CheckId, string SolutionId, string MaterialVersionId, string TournamentId,
     string TeamId, string TaskId, string Kind, string State, string Version, string ReviewRevision, string CreatedAt,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)] string? Outcome = null,
@@ -33,13 +33,21 @@ public static class CheckingJson
     public static JsonSerializerOptions Options { get; } = new(JsonSerializerDefaults.Web);
 }
 
-public interface ICheckingWork
+public interface ICheckingCommands
 {
     Task<CheckView> TransitionAsync(AuthenticatedSubject subject, Guid checkId, Guid assignmentId, string capability,
         string? outcome, long expectedVersion, string key, string correlationId, CancellationToken cancellationToken);
-    Task<QueuePage> QueueAsync(AuthenticatedSubject subject, Guid tournamentId, string queue, string? cursor, CancellationToken cancellationToken);
     Task<TakeNextReply> TakeNextAsync(AuthenticatedSubject subject, Guid tournamentId, string queue, string key, string correlationId, CancellationToken cancellationToken);
+}
+
+public interface ICheckingReads
+{
+    Task<QueuePage> QueueAsync(AuthenticatedSubject subject, Guid tournamentId, string queue, string? cursor, CancellationToken cancellationToken);
     Task<AssignmentView?> MyAssignmentAsync(AuthenticatedSubject subject, CancellationToken cancellationToken);
     Task<CheckView> CheckAsync(AuthenticatedSubject subject, Guid checkId, CancellationToken cancellationToken);
+}
+
+public interface ICheckingMaterial
+{
     Task<Stream> MaterialAsync(AuthenticatedSubject subject, Guid checkId, CancellationToken cancellationToken);
 }

@@ -131,3 +131,5 @@ Initial: expectedResultVersion=0 и без appeal-полей. Appeal: resultId, 
 Текущая реализация 24 октября: CHK-BE-06, CHK-UT-01, CHK-IT-01 и CHK-FE-03 завершены; фактические проверки/ограничения — в журнале. Экран жюри подключён к реальному API. Публикация outbox выполнена в CHK-INT-02; runtime RecheckRequested реализован и принят в CHK-INT-03/CHK-IT-03.
 
 24 октября: CHK-INT-02/04, CHK-IT-02 и CHK-FE-04 завершены. Проверены реальный broker restart/mandatory confirm/quarantine/redrive, схемы обеих сторон, HTTP/PostgreSQL races и восстановление UI. Полный crash/fault gate CHK-IT-04 и браузерные V1–V6 впоследствии завершены; первоначальные результаты и даты сохранены в архиве журнала.
+
+22 ноября: Application определяет допуск и создание назначения перепроверки через порт чтения прав, предыдущей проверки и занятости. PostgreSQL-адаптер по-прежнему фиксирует результат, inbox и outbox в одной транзакции. HTTP использует отдельные порты чтения, команд и материала. Проверки семантики Checking после JSON Schema принадлежат контрактам Checking.

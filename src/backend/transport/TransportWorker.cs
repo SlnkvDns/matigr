@@ -7,22 +7,14 @@ using RabbitMQ.Client;
 
 namespace Matigr.Transport;
 
-public sealed record TransportSchemas(IReadOnlyDictionary<string, WireSchema> Incoming, IReadOnlyDictionary<string, WireSchema> Outgoing)
+public sealed record TransportSchemas(IReadOnlyDictionary<string, WireSchema> Incoming,
+    IReadOnlyDictionary<string, WireSchema> Outgoing, Action<JsonElement, string>? ValidateContract = null)
 {
     public void Validate(JsonElement envelope, string route, bool outgoing)
     {
         if (!(outgoing ? Outgoing : Incoming).TryGetValue(route, out var schema)) throw new InvalidMessageException("InvalidRoutingKey");
         schema.Validate(envelope);
-        var payload = envelope.GetProperty("payload");
-        if (route is "checking.check-completed.initial.v1" or "checking.check-completed.appeal.v1"
-            && payload.GetProperty("kind").GetString() != (route.EndsWith(".initial.v1", StringComparison.Ordinal) ? "Initial" : "Appeal"))
-            throw new InvalidMessageException("InvalidRoutingKind");
-        if ((payload.TryGetProperty("assignmentKind", out var kind) && kind.GetString() == "Selected"
-            || payload.TryGetProperty("decisionOrigin", out var origin) && origin.GetString() == "AppealReview")
-            && payload.GetProperty("reviewerId").GetString() != payload.GetProperty("selectedReviewerId").GetString())
-            throw new InvalidMessageException("InvalidSelectedReviewer");
-        if (payload.TryGetProperty("checkId", out var check) && envelope.GetProperty("aggregateType").GetString() == "Check"
-            && check.GetString() != envelope.GetProperty("aggregateId").GetString()) throw new InvalidMessageException("InvalidLineage");
+        ValidateContract?.Invoke(envelope, route);
     }
 }
 
@@ -44,7 +36,6 @@ public sealed class TransportWorker(IServiceScopeFactory scopes, TransportOption
                     using var call = CancellationTokenSource.CreateLinkedTokenSource(stoppingToken);
                     call.CancelAfter(TimeSpan.FromSeconds(Math.Max(1, options.LeaseSeconds / 2)));
                     var ct = call.Token;
-                    await store.ObserveAsync(health, ct);
                     var outgoing = await store.ClaimAsync(ct);
                     if (outgoing is not null)
                     {

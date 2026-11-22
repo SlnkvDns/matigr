@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Matigr.Checking.Contracts;
 using Matigr.Transport;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -14,6 +15,7 @@ public static class CheckingTransport
         if (!configuration.GetValue<bool>("Transport:Enabled")) return services;
         var options = TransportOptions.Read(configuration, "Checking", "checking.recheck-requests.v1", "Checking.RecheckRequested.v1", "raw_envelope");
         services.AddSingleton(options); services.AddSingleton<PostgresTransportStore>();
+        services.AddHostedService<TransportObserver>();
         var assembly = typeof(CheckingTransport).Assembly;
         services.AddSingleton(new TransportSchemas(
             new Dictionary<string, WireSchema> { ["appeals.recheck-requested.v1"] = new(assembly, "recheck-requested.v1.schema.json") },
@@ -22,7 +24,7 @@ public static class CheckingTransport
                 ["checking.check-completed.appeal.v1"] = new(assembly, "check-completed.v1.schema.json"),
                 ["checking.recheck-assigned.v1"] = new(assembly, "recheck-assigned.v1.schema.json"),
                 ["checking.recheck-escalated.v1"] = new(assembly, "recheck-escalated.v1.schema.json"),
-                ["checking.recheck-request-rejected.v1"] = new(assembly, "recheck-request-rejected.v1.schema.json") }));
+                ["checking.recheck-request-rejected.v1"] = new(assembly, "recheck-request-rejected.v1.schema.json") }, CheckingEventRules.Validate));
         services.AddSingleton(new ConnectionFactory { HostName = configuration["Broker:Host"] ?? "localhost",
             UserName = configuration["Broker:Username"] ?? throw new InvalidOperationException("Broker username required."),
             Password = configuration["Broker:Password"] ?? throw new InvalidOperationException("Broker password required."),

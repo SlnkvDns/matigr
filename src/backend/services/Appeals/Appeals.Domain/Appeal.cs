@@ -37,13 +37,13 @@ public sealed record Appeal(Guid AppealId, PublishedBasis Basis, DateTimeOffset 
         if (basis.TeamId != team || basis.TournamentId != window.TournamentId) throw new AppealRuleException("Forbidden");
         if (quotaUsed) throw new AppealRuleException("AlreadyAppealed");
         if (!window.Open) throw new AppealRuleException("WindowClosed");
-        if (now < basis.PublishedAt) throw new ArgumentException("Publication must precede submission.");
+        // Results has already confirmed the publication. Its clock is independent of this service.
         return new(id, basis, now.ToUniversalTime(), window.Version);
     }
     public Appeal Claim(Guid request, Guid reviewer, DateTimeOffset now)
     {
         if (State != AppealState.Registered) throw new AppealRuleException("AppealNotRegistered");
-        if (request == Guid.Empty || reviewer == Guid.Empty || now < SubmittedAt || request == Attempt?.RequestId) throw new ArgumentException("Invalid selection.");
+        if (request == Guid.Empty || reviewer == Guid.Empty || request == Attempt?.RequestId) throw new ArgumentException("Invalid selection.");
         return this with { State = AppealState.AcceptedAwaitingRecheck, Version = checked(Version + 1),
             Attempt = new(request, reviewer, now.ToUniversalTime(), AttemptState.Pending), Progress = null };
     }

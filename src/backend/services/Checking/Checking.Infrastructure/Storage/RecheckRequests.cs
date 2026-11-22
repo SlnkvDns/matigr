@@ -53,25 +53,15 @@ internal sealed class RecheckRequests(CheckingDbContext db, StorageProtection pr
         if (s is null) return new(false, "SolutionDependencyUnavailable");
         var basis = await db.Checks.AsNoTracking().SingleOrDefaultAsync(x => x.CheckId == request.BaseCheckId, ct);
         if (basis is null || basis.State != CheckState.Completed) return new(false, "BaseCheckDependencyUnavailable");
-        var reason = s.TournamentId != request.TournamentId || s.TeamId != request.TeamId || s.TaskId != request.TaskId
-            || s.MaterialVersionId != request.MaterialVersionId || basis.SolutionId != request.SolutionId
-            || basis.Kind != CheckKind.Initial || basis.Outcome != request.BaseOutcome ? "BasisMismatch" : null;
-        if (reason is null && !await db.ReviewerScopes.AnyAsync(x => x.ReviewerId == request.RequestedReviewerId && x.TournamentId == request.TournamentId && x.Role == ReviewerRole.Reviewer, ct)) reason = "ReviewerScopeConflict";
-        var existing = await db.Checks.AsNoTracking().SingleOrDefaultAsync(x => x.AppealId == request.AppealId, ct);
+        var snapshot = new SolutionReference(s.SolutionId, s.TournamentId, s.TeamId, s.TaskId, s.MaterialVersionId, s.MaterialRef, s.AcceptedAt, s.SourceVersion);
+        var admission = await new RecheckAdmission(new RecheckEligibility(db)).DecideAsync(request, snapshot, basis.SolutionId, basis.Kind, basis.Outcome, ct);
         string response; Guid? checkId = null;
         var now = clock.GetUtcNow(); now = now.AddTicks(-(now.Ticks % 10));
-        if (existing is not null && reason is null) {
-            if (existing.SolutionId != request.SolutionId || existing.BaseCheckId != request.BaseCheckId || existing.ResultId != request.ResultId
-                || existing.BasePublicationId != request.PublicationId || existing.ExpectedResultVersion != request.ExpectedResultVersion
-                || existing.SelectedReviewerId != request.RequestedReviewerId || existing.BaseOutcome != request.BaseOutcome) reason = "AppealBasisConflict";
-            else {
-                var original = await db.RecheckRequestReceipts.AsNoTracking().SingleAsync(x => x.RequestId == existing.RecheckRequestId, ct);
-                response = original.ResponseEnvelope; checkId = existing.CheckId;
-                await Persist(response, "Assigned", null, checkId); return new(true);
-            }
+        if (admission.Existing is { } existing) {
+            var original = await db.RecheckRequestReceipts.AsNoTracking().SingleAsync(x => x.RequestId == existing.Basis.RecheckRequestId, ct);
+            await Persist(original.ResponseEnvelope, "Assigned", null, existing.CheckId); return new(true);
         }
-        if (reason is null && await db.Assignments.AnyAsync(x => x.ReviewerId == request.RequestedReviewerId && x.State == AssignmentState.Active, ct)) reason = "ReviewerBusy";
-        if (reason is not null) {
+        if (admission.Rejection is { } reason) {
             response = JsonSerializer.Serialize(new { messageId = Id(Guid.NewGuid()), messageType = "matigr.checking.recheck-request-rejected", schemaVersion = 1,
                 producer = "Checking", occurredAt = Stamp(now), aggregateType = "RecheckRequest", aggregateId = Id(request.RequestId), aggregateVersion = "1",
                 correlationId = correlation, causationId = Id(messageId), payload = new { appealId = Id(request.AppealId), recheckRequestId = Id(request.RequestId),
@@ -80,13 +70,11 @@ internal sealed class RecheckRequests(CheckingDbContext db, StorageProtection pr
             await Persist(response, "Rejected", reason, null); return new(true);
         }
         var baseAssignment = await db.Assignments.AsNoTracking().SingleAsync(x => x.AssignmentId == basis!.CurrentAssignmentId, ct);
-        var snapshot = new SolutionReference(s.SolutionId, s.TournamentId, s.TeamId, s.TaskId, s.MaterialVersionId, s.MaterialRef, s.AcceptedAt, s.SourceVersion);
         var baseCheck = Check.RestoreAssigned(basis.CheckId, snapshot, basis.Kind, basis.ReviewRevision, basis.Version - 1, basis.EscalationId, null,
             baseAssignment.AssignmentId, new(baseAssignment.ReviewerId, basis.TournamentId, baseAssignment.Role), baseAssignment.StartedAt);
         baseCheck.Complete(baseAssignment.AssignmentId, baseAssignment.ReviewerId, basis.Outcome!.Value, basis.CompletedAt!.Value);
         var revision = checked(await db.Checks.Where(x => x.SolutionId == s.SolutionId).MaxAsync(x => x.ReviewRevision, ct) + 1);
-        var a = new AppealBasis(request.AppealId, request.RequestId, request.ResultId, request.ExpectedResultVersion, request.BaseCheckId, request.PublicationId, request.RequestedReviewerId, request.BaseOutcome);
-        var check = Check.CreateAppeal(Guid.NewGuid(), snapshot, revision, a, baseCheck, Guid.NewGuid(), new(request.RequestedReviewerId, request.TournamentId, ReviewerRole.Reviewer), now);
+        var check = RecheckAdmission.Assign(request, snapshot, baseCheck, revision, now);
         checkId = check.CheckId; var assignment = check.CurrentAssignment!;
         var capability = protection.IssueCapability(assignment.AssignmentId, request.RequestedReviewerId);
         db.Checks.Add(new() { CheckId = check.CheckId, SolutionId = s.SolutionId, TournamentId = s.TournamentId, Kind = CheckKind.Appeal,

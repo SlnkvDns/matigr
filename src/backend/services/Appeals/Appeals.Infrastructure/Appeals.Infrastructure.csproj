@@ -2,6 +2,7 @@
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <Compile Include="../../../transport/*.cs" Link="Transport/%(Filename)%(Extension)" />
+    <Compile Include="../../../../../contracts/events/checking/CheckingEventRules.cs" Link="Contracts/CheckingEventRules.cs" />
     <EmbeddedResource Include="../../../../../contracts/events/appeals/*.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
     <EmbeddedResource Include="../../../../../contracts/events/appeals/consumers/*.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
     <PackageReference Include="RabbitMQ.Client" />

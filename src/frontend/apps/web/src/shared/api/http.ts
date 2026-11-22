@@ -5,6 +5,7 @@ export type ApiBasePath = '/api/v1/checking' | '/api/v1/results' | '/api/v1/appe
 interface RequestOptions {
   accessToken?: string;
   signal?: AbortSignal;
+  ifNoneMatch?: string;
 }
 
 interface PostOptions extends RequestOptions {
@@ -79,6 +80,7 @@ export function createHttpClient(basePath: ApiBasePath, fetchImpl: typeof fetch 
       headers.set('Idempotency-Key', options.idempotencyKey);
     }
     if (options.ifMatch !== undefined) headers.set('If-Match', options.ifMatch);
+    if (method === 'GET' && options.ifNoneMatch !== undefined) headers.set('If-None-Match', options.ifNoneMatch);
     const init: RequestInit = { method, headers, credentials: 'omit', cache: 'no-store', redirect: 'error' };
     if (body !== undefined) {
       headers.set('Content-Type', 'application/json');
@@ -94,6 +96,8 @@ export function createHttpClient(basePath: ApiBasePath, fetchImpl: typeof fetch 
       throw new ApiNetworkError();
     }
     const contentType = response.headers.get('Content-Type')?.split(';')[0]?.trim().toLowerCase();
+    if (response.status === 304 && method === 'GET' && options.ifNoneMatch !== undefined)
+      return { status: 304, data: undefined, etag: response.headers.get('ETag') };
     if (!response.ok) {
       let problem: ProblemDetails | undefined;
       if (contentType === 'application/problem+json') {

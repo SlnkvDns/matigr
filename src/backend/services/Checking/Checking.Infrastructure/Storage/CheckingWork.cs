@@ -12,7 +12,7 @@ using Npgsql;
 namespace Matigr.Checking.Infrastructure.Storage;
 
 internal sealed partial class CheckingWork(CheckingDbContext db, StorageProtection protection, IReadOnlyMaterialStore materials,
-    TimeProvider clock, QueueReadOptions options) : ICheckingWork
+    TimeProvider clock, QueueReadOptions options) : ICheckingCommands, ICheckingReads, ICheckingMaterial
 {
     private const string TakeOperation = "TakeNext";
     private static string Id(Guid id) => id.ToString("D");

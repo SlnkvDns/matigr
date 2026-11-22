@@ -24,8 +24,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** @description Anonymous Server-Sent Events invalidating a public snapshot. Register the subscription before reading the current snapshot. Events carry only tournamentId, snapshotVersion and technical connection state; reconnect requires a fresh GET. This stream is not a replay log or the source of result data. */
-        get: operations["streamStandingsInvalidations"];
+        /** @description Anonymous WebSocket. Server text messages carry complete public snapshots. After connecting or reconnecting, the server sends the current snapshot, then the latest changes. Versions may be skipped; clients keep the highest version. Clients do not send application messages. */
+        get: operations["streamStandingsSnapshots"];
         put?: never;
         post?: never;
         delete?: never;
@@ -248,8 +248,6 @@ export interface components {
         SnapshotETag: string;
         /** @description Public representation; contains no private data. */
         PublicCache: "public, max-age=0, must-revalidate";
-        /** @description Do not cache a live event stream. */
-        NoCache: "no-cache";
         /** @description Private/internal response and errors are never stored by shared caches. */
         PrivateCache: "private, no-store";
     };
@@ -260,7 +258,9 @@ export interface operations {
     getTournamentStandings: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                "If-None-Match"?: string;
+            };
             path: {
                 tournamentId: components["parameters"]["TournamentId"];
             };
@@ -279,17 +279,23 @@ export interface operations {
                     "application/json": components["schemas"]["StandingsSnapshot"];
                 };
             };
+            /** @description Snapshot version matches If-None-Match; no response body */
+            304: {
+                headers: {
+                    ETag: components["headers"]["SnapshotETag"];
+                    "Cache-Control": components["headers"]["PublicCache"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
             404: components["responses"]["NotFound"];
             503: components["responses"]["Unavailable"];
         };
     };
-    streamStandingsInvalidations: {
+    streamStandingsSnapshots: {
         parameters: {
             query?: never;
-            header?: {
-                /** @description Ignored for business replay; reconnect performs a fresh snapshot handshake. */
-                "Last-Event-ID"?: string;
-            };
+            header?: never;
             path: {
                 tournamentId: components["parameters"]["TournamentId"];
             };
@@ -297,14 +303,20 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description SSE invalidation stream */
-            200: {
+            /** @description WebSocket upgrade for the public standings subscription */
+            101: {
                 headers: {
-                    "Cache-Control": components["headers"]["NoCache"];
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+            /** @description WebSocket upgrade required */
+            400: {
+                headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "text/event-stream": string;
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
                 };
             };
             404: components["responses"]["NotFound"];

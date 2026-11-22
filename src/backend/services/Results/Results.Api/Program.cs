@@ -17,6 +17,7 @@ if (app.Environment.IsEnvironment("Local") && app.Configuration.GetValue<bool?>(
     await ResultFixtures.SeedAsync(db, app.Configuration["Fixtures:Directory"] ?? throw new InvalidOperationException("Fixtures:Directory required."));
 }
 if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;
+app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(30), KeepAliveTimeout = TimeSpan.FromSeconds(15) });
 app.MapResultReads();
 app.MapStandingsEvents();
 app.MapGet("/health/live", () => HttpResults.Ok(new { status = "Alive" })).AllowAnonymous();
