@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router';
+import { Link, useSearchParams } from 'react-router';
 import type { components as checking } from '../../shared/api/generated/checking';
 import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
+import { tournamentLocation } from '../../shared/tournament';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { appealName, exactVersion, readList, readView, reviewLabel, scheduleAppealRefresh, states } from './appeals';
 import type { AppealSummary, AppealView } from './appeals';
@@ -11,6 +12,8 @@ import type { Standings } from '../results/standings';
 const submittedAt = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', timeStyle: 'short' });
 
 export function JuryAppeals({ tournament, standings }: { tournament: string; standings?: Standings | undefined }) {
+  const [query] = useSearchParams();
+  const checkingLocation = tournamentLocation('/checking', query.get('tournamentId'));
   const { session, snapshot } = useSession(); const [items, setItems] = useState<AppealSummary[]>();
   const [selection, setSelection] = useState<AppealSummary>();
   const [detail, setDetail] = useState<{ view: AppealView; own: boolean }>(); const [error, setError] = useState<unknown>();
@@ -115,9 +118,9 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
       </div>
       <div className="appeals-actions">
         {retry && <button className="appeals-button" disabled={sending} onClick={() => void claim(selected)}>Повторить запрос</button>}
-        {detail?.own && <Link className="appeals-button" to="/checking">Открыть перепроверку</Link>}
+        {detail?.own && <Link className="appeals-button" to={checkingLocation}>Открыть перепроверку</Link>}
         {busy && <>
-          <Link className="appeals-button appeals-secondary" to="/checking">К текущей проверке</Link>
+          <Link className="appeals-button appeals-secondary" to={checkingLocation}>К текущей проверке</Link>
           <button className="appeals-button" disabled={blocked} onClick={() => void claim(selected)}>Взять снова</button>
         </>}
       </div>

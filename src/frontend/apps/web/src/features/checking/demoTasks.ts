@@ -1,4 +1,4 @@
-const demoTournamentId = '0344e06b-4ea1-582e-bd91-e832719773f2';
+import { demoTournamentId } from '../../shared/tournament';
 
 const tasks: Readonly<Partial<Record<string, { statement: string; solution: string }>>> = {
   'acdc6594-8ac1-5f18-bb65-def577a79950': {

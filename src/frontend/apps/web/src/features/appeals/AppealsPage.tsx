@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
+import { tournamentLocation } from '../../shared/tournament';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
 import { exactVersion, readList, readView, reviewLabel, scheduleAppealRefresh, taskName } from './appeals';
@@ -116,7 +117,7 @@ function TeamAppeals({ tournament, standings }: { tournament: string; standings:
         : <p>Выберите задачу с опубликованным результатом на странице вашей команды.</p>}
       <div className="appeals-actions">
         {resultId && exactVersion(version) && !existing && <button className="appeals-button" disabled={!ready || sending || blocked} onClick={() => void submit()}>{retry ? 'Повторить подачу' : 'Подать апелляцию'}</button>}
-        <Link className="appeals-button appeals-secondary" to={`/results?${new URLSearchParams({ tournamentId: tournament })}`}>К результатам команды</Link>
+        <Link className="appeals-button appeals-secondary" to={tournamentLocation('/results', tournament)}>К результатам команды</Link>
       </div>
     </section>
     <section aria-label="Мои апелляции" className="appeals-panel">

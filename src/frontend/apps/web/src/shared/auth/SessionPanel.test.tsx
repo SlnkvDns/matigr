@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { AppRoutes } from '../../app/AppRoutes';
+import { demoTournamentId } from '../tournament';
 import { PrivateSessionBoundary, SessionProvider, useSession } from './SessionContext';
 import { SessionPanel } from './SessionPanel';
 import { createDevIdentityProvider } from './identity';
@@ -11,9 +12,13 @@ import { deferred, jsonResponse, wireSession } from './test-support';
 
 describe('dev selection and server-approved profile', () => {
   it('works in StrictMode, keeps the table anonymous, shows the server profile, and never renders or persists the token', async () => {
-    const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(jsonResponse({ ...wireSession(), profile: {
-      subjectId: 'server-subject', displayName: 'Альфа', roles: ['Team'], tournamentIds: ['server-tournament'], teamId: 'server-team',
-    } }));
+    const standingsPath = `/api/v1/results/tournaments/${demoTournamentId}/standings`;
+    const fetch = vi.fn<typeof globalThis.fetch>(async url => {
+      if (url === standingsPath) return jsonResponse({ tournamentId: demoTournamentId, snapshotVersion: '0', tasks: [], teams: [] });
+      return jsonResponse({ ...wireSession(), profile: {
+        subjectId: 'server-subject', displayName: 'Альфа', roles: ['Team'], tournamentIds: ['server-tournament'], teamId: 'server-team',
+      } });
+    });
     vi.stubGlobal('fetch', fetch);
     const setStorage = vi.spyOn(Storage.prototype, 'setItem');
     const user = userEvent.setup();
@@ -21,21 +26,29 @@ describe('dev selection and server-approved profile', () => {
       <MemoryRouter initialEntries={['/results']}><AppRoutes /></MemoryRouter>
     </SessionProvider></StrictMode>);
     expect(screen.getByText('Гость')).toBeInTheDocument();
-    expect(fetch).not.toHaveBeenCalled();
+    expect(await screen.findByRole('table')).toBeInTheDocument();
+    const publicReads = fetch.mock.calls.length;
+    for (const [url, init] of fetch.mock.calls) {
+      expect(url).toBe(standingsPath);
+      expect(new Headers(init?.headers).has('Authorization')).toBe(false);
+    }
     await user.selectOptions(screen.getByLabelText('Тестовый пользователь'), 'senior');
     await user.click(screen.getByRole('button', { name: 'Выбрать' }));
     expect(await screen.findByText('Альфа')).toBeInTheDocument();
-    expect(screen.getByText('Команда', { exact: true })).toBeInTheDocument();
-    expect(screen.queryByText('Старший жюри', { selector: '.session-description' })).not.toBeInTheDocument();
+    const summary = within(screen.getByRole('region', { name: 'Профиль пользователя' })).getByRole('status');
+    expect(summary).toHaveTextContent('Команда');
+    expect(summary).not.toHaveTextContent('Старший жюри');
     expect(screen.getByRole('heading', { name: 'Турнирная таблица' })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(fetch).toHaveBeenCalledTimes(publicReads + 1);
+    expect(fetch.mock.lastCall?.[0]).toBe('/dev/v1/session/select');
     expect(view.container.innerHTML).not.toContain('memory-secret');
     expect(setStorage).not.toHaveBeenCalled();
     await user.click(screen.getByRole('button', { name: 'Выйти' }));
     expect(screen.getByText('Гость')).toBeInTheDocument();
     expect(screen.queryByText('Альфа')).not.toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Турнирная таблица' })).toBeInTheDocument();
-    expect(fetch).toHaveBeenCalledTimes(1);
+    expect(screen.getByRole('table')).toBeInTheDocument();
+    expect(fetch).toHaveBeenCalledTimes(publicReads + 1);
   });
 
   it('resets private component drafts/actions at switch start and preserves public component state', async () => {

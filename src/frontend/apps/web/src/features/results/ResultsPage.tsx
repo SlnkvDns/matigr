@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
 import { useSearchParams } from 'react-router';
+import { demoTournamentId } from '../../shared/tournament';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
 import { Page } from '../../shared/ui/Page';
 import { StandingsController } from './StandingsController';
@@ -8,7 +9,8 @@ import { TeamResults } from './TeamResults';
 
 export function ResultsPage() {
   const [query, setQuery] = useSearchParams();
-  const tournament = query.get('tournamentId') ?? import.meta.env.VITE_TOURNAMENT_ID ?? '';
+  const tournament = query.get('tournamentId') ?? import.meta.env.VITE_TOURNAMENT_ID
+    ?? (import.meta.env.DEV ? demoTournamentId : '');
   const [draft, setDraft] = useState(tournament);
   const controller = useMemo(() => new StandingsController(tournament), [tournament]);
   const { snapshot, error, loading, connection } = useSyncExternalStore(controller.subscribe, controller.getSnapshot);
