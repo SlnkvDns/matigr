@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/events/results/result-evaluation-rejected.v1.schema.json",
+  "title": "ResultEvaluationRejected",
+  "description": "Correlated permanent business conflict. A transiently missing dependency is Deferred/retried, not this receipt.",
+  "type": "object",
+  "$defs": {
+    "opaqueId": { "type": "string", "minLength": 1, "description": "Opaque identifier; do not derive rights or ordering from its value." },
+    "positiveVersion": { "type": "string", "pattern": "^[1-9][0-9]*$", "description": "Exact positive decimal version; never parse through an imprecise JavaScript Number." }
+  },
+  "properties": {
+    "messageId": { "$ref": "#/$defs/opaqueId" },
+    "messageType": { "const": "matigr.results.result-evaluation-rejected" },
+    "schemaVersion": { "type": "integer", "const": 1 },
+    "producer": { "const": "Results" },
+    "occurredAt": { "type": "string", "format": "date-time", "pattern": "Z$" },
+    "aggregateType": { "const": "EvaluationReceipt" },
+    "aggregateId": { "$ref": "#/$defs/opaqueId" },
+    "aggregateVersion": { "const": "1", "description": "One immutable terminal receipt per evaluationId." },
+    "correlationId": { "$ref": "#/$defs/opaqueId" },
+    "causationId": { "$ref": "#/$defs/opaqueId" },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "evaluationId": { "$ref": "#/$defs/opaqueId", "description": "The originating CheckCompleted checkId." },
+        "kind": { "const": "Appeal" },
+        "reviewerId": { "$ref": "#/$defs/opaqueId" },
+        "assignmentId": { "$ref": "#/$defs/opaqueId" },
+        "evaluationDecisionOrigin": { "enum": ["AppealReview", "SeniorEscalation"] },
+        "tournamentId": { "$ref": "#/$defs/opaqueId" },
+        "teamId": { "$ref": "#/$defs/opaqueId" },
+        "taskId": { "$ref": "#/$defs/opaqueId" },
+        "solutionId": { "$ref": "#/$defs/opaqueId" },
+        "resultId": { "$ref": "#/$defs/opaqueId" },
+        "expectedResultVersion": { "$ref": "#/$defs/positiveVersion" },
+        "actualResultVersion": { "$ref": "#/$defs/positiveVersion" },
+        "reasonCode": { "type": "string", "minLength": 1, "description": "Stable conflict category; temporary dependency failures are excluded. The final enum remains open in the approved contract." },
+        "rejectedAt": { "type": "string", "format": "date-time", "pattern": "Z$" },
+        "appealId": { "$ref": "#/$defs/opaqueId" },
+        "recheckRequestId": { "$ref": "#/$defs/opaqueId" },
+        "baseCheckId": { "$ref": "#/$defs/opaqueId" },
+        "selectedReviewerId": { "$ref": "#/$defs/opaqueId" },
+        "escalationId": { "$ref": "#/$defs/opaqueId" }
+      },
+      "required": ["evaluationId", "kind", "reviewerId", "assignmentId", "evaluationDecisionOrigin", "tournamentId", "teamId", "taskId", "solutionId", "expectedResultVersion", "reasonCode", "rejectedAt", "appealId", "recheckRequestId", "baseCheckId", "selectedReviewerId"],
+      "additionalProperties": true,
+      "allOf": [
+        { "if": { "properties": { "evaluationDecisionOrigin": { "const": "SeniorEscalation" } }, "required": ["evaluationDecisionOrigin"] }, "then": { "required": ["escalationId"] }, "else": { "not": { "required": ["escalationId"] } } }
+      ],
+      "propertyNames": { "not": { "enum": ["capability", "capabilityHash", "assignmentToken", "token", "accessToken", "score", "previousScore", "points", "total", "comment", "commentary", "material", "materialRef", "materialFile", "materialUrl", "requestId"] } }
+    }
+  },
+  "required": ["messageId", "messageType", "schemaVersion", "producer", "occurredAt", "aggregateType", "aggregateId", "aggregateVersion", "correlationId", "causationId", "payload"],
+  "additionalProperties": true,
+  "propertyNames": { "not": { "enum": ["capability", "capabilityHash", "assignmentToken", "token", "accessToken", "score", "previousScore", "points", "total", "comment", "commentary", "material", "materialRef", "materialFile", "materialUrl", "requestId"] } }
+}

@@ -1,0 +1,29 @@
+{
+  "messageId": "message-initial-senior",
+  "messageType": "matigr.checking.check-completed",
+  "schemaVersion": 1,
+  "producer": "Checking",
+  "occurredAt": "2026-10-23T04:00:00Z",
+  "aggregateType": "Check",
+  "aggregateId": "check-initial-1",
+  "aggregateVersion": "5",
+  "correlationId": "process-1",
+  "causationId": "command-1",
+  "payload": {
+    "solutionId": "19537a57-dbab-56eb-a167-e04a7b3104fe",
+    "materialVersionId": "3be2c5aa-ff91-5af7-8649-edfeebebd0fc",
+    "tournamentId": "0344e06b-4ea1-582e-bd91-e832719773f2",
+    "teamId": "ce3eb69e-e2b8-5f58-a45c-40c9d71d0031",
+    "taskId": "acdc6594-8ac1-5f18-bb65-def577a79950",
+    "checkId": "check-initial-1",
+    "kind": "Initial",
+    "reviewRevision": "1",
+    "outcome": "Correct",
+    "decisionOrigin": "SeniorEscalation",
+    "reviewerId": "6adf74af-fc84-5afb-8708-0db40939d2ff",
+    "assignmentId": "assignment-initial-senior",
+    "completedAt": "2026-10-23T04:00:00Z",
+    "expectedResultVersion": "0",
+    "escalationId": "escalation-initial"
+  }
+}

@@ -1,0 +1,274 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://schemas.matigr.invalid/events/appeals/consumers/result-evaluation-applied.v1.schema.json",
+  "title": "ResultEvaluationApplied (Appeals consumer expectation)",
+  "description": "Appeals consumer expectation for the Results-owned published-result receipt.",
+  "type": "object",
+  "$defs": {
+    "opaqueId": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Opaque identifier; do not derive rights or ordering from its value."
+    },
+    "positiveVersion": {
+      "type": "string",
+      "pattern": "^[1-9][0-9]*$",
+      "description": "Exact decimal version; never parse through an imprecise JavaScript Number."
+    },
+    "score": {
+      "type": "string",
+      "pattern": "^(0|[1-9][0-9]*)$",
+      "description": "Exact non-negative integer score in decimal notation."
+    }
+  },
+  "properties": {
+    "messageId": {
+      "$ref": "#/$defs/opaqueId"
+    },
+    "messageType": {
+      "const": "matigr.results.result-evaluation-applied"
+    },
+    "schemaVersion": {
+      "type": "integer",
+      "const": 1
+    },
+    "producer": {
+      "const": "Results"
+    },
+    "occurredAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "Z$",
+      "description": "UTC; not an ordering guarantee."
+    },
+    "aggregateType": {
+      "const": "EvaluationReceipt"
+    },
+    "aggregateId": {
+      "$ref": "#/$defs/opaqueId"
+    },
+    "aggregateVersion": {
+      "const": "1",
+      "description": "One immutable terminal receipt per evaluationId."
+    },
+    "correlationId": {
+      "$ref": "#/$defs/opaqueId"
+    },
+    "causationId": {
+      "$ref": "#/$defs/opaqueId"
+    },
+    "payload": {
+      "type": "object",
+      "properties": {
+        "evaluationId": {
+          "$ref": "#/$defs/opaqueId",
+          "description": "The originating CheckCompleted checkId."
+        },
+        "kind": {
+          "const": "Appeal"
+        },
+        "reviewerId": {
+          "$ref": "#/$defs/opaqueId",
+          "description": "Actual reviewer of this evaluation."
+        },
+        "assignmentId": {
+          "$ref": "#/$defs/opaqueId",
+          "description": "Actual assignment that completed this evaluation."
+        },
+        "evaluationDecisionOrigin": {
+          "enum": [
+            "AppealReview",
+            "SeniorEscalation"
+          ]
+        },
+        "solutionId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "materialVersionId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "tournamentId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "teamId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "taskId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "resultId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "expectedResultVersion": {
+          "$ref": "#/$defs/positiveVersion"
+        },
+        "resultVersion": {
+          "$ref": "#/$defs/positiveVersion"
+        },
+        "previousOutcome": {
+          "enum": [
+            "Correct",
+            "Incorrect"
+          ]
+        },
+        "outcome": {
+          "enum": [
+            "Correct",
+            "Incorrect"
+          ]
+        },
+        "previousScore": {
+          "$ref": "#/$defs/score"
+        },
+        "score": {
+          "$ref": "#/$defs/score"
+        },
+        "scoreRuleVersion": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "changed": {
+          "type": "boolean",
+          "description": "Whether authoritative result fields changed; outcome change counts even when score is equal."
+        },
+        "appliedAt": {
+          "type": "string",
+          "format": "date-time",
+          "pattern": "Z$"
+        },
+        "publicationState": {
+          "const": "Published"
+        },
+        "basePublicationId": {
+          "$ref": "#/$defs/opaqueId",
+          "description": "Original publication from the immutable Appeal basis / incoming CheckCompleted."
+        },
+        "publicationId": {
+          "$ref": "#/$defs/opaqueId",
+          "description": "Final publication available to readers; for changed=false it remains the original publication."
+        },
+        "appealId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "recheckRequestId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "baseCheckId": {
+          "$ref": "#/$defs/opaqueId"
+        },
+        "selectedReviewerId": {
+          "$ref": "#/$defs/opaqueId",
+          "description": "Reviewer selected by Appeals, distinct from actual reviewer after senior escalation."
+        },
+        "escalationId": {
+          "$ref": "#/$defs/opaqueId"
+        }
+      },
+      "required": [
+        "evaluationId",
+        "kind",
+        "reviewerId",
+        "assignmentId",
+        "evaluationDecisionOrigin",
+        "solutionId",
+        "materialVersionId",
+        "tournamentId",
+        "teamId",
+        "taskId",
+        "resultId",
+        "expectedResultVersion",
+        "resultVersion",
+        "previousOutcome",
+        "outcome",
+        "previousScore",
+        "score",
+        "scoreRuleVersion",
+        "changed",
+        "appliedAt",
+        "publicationState",
+        "basePublicationId",
+        "publicationId",
+        "appealId",
+        "recheckRequestId",
+        "baseCheckId",
+        "selectedReviewerId"
+      ],
+      "additionalProperties": true,
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "evaluationDecisionOrigin": {
+                "const": "SeniorEscalation"
+              }
+            },
+            "required": [
+              "evaluationDecisionOrigin"
+            ]
+          },
+          "then": {
+            "required": [
+              "escalationId"
+            ]
+          },
+          "else": {
+            "not": {
+              "required": [
+                "escalationId"
+              ]
+            }
+          }
+        }
+      ],
+      "propertyNames": {
+        "not": {
+          "enum": [
+            "capability",
+            "capabilityHash",
+            "assignmentToken",
+            "token",
+            "accessToken",
+            "comment",
+            "commentary",
+            "material",
+            "materialRef",
+            "materialFile",
+            "materialUrl",
+            "requestId"
+          ]
+        }
+      }
+    }
+  },
+  "required": [
+    "messageId",
+    "messageType",
+    "schemaVersion",
+    "producer",
+    "occurredAt",
+    "aggregateType",
+    "aggregateId",
+    "aggregateVersion",
+    "correlationId",
+    "causationId",
+    "payload"
+  ],
+  "additionalProperties": true,
+  "propertyNames": {
+    "not": {
+      "enum": [
+        "capability",
+        "capabilityHash",
+        "assignmentToken",
+        "token",
+        "accessToken",
+        "comment",
+        "commentary",
+        "material",
+        "materialRef",
+        "materialFile",
+        "materialUrl",
+        "requestId"
+      ]
+    }
+  }
+}

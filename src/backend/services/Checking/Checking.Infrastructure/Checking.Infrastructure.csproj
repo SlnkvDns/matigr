@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Compile Include="../../../transport/*.cs" Link="Transport/%(Filename)%(Extension)" />
+    <Compile Include="../../../../../contracts/events/checking/CheckingEventRules.cs" Link="Contracts/CheckingEventRules.cs" />
+    <EmbeddedResource Include="../../../../../contracts/events/checking/*.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
+    <EmbeddedResource Include="../../../../../contracts/events/checking/consumers/recheck-requested.v1.schema.json" LogicalName="Matigr.Schemas.%(Filename)%(Extension)" />
+    <PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" />
+    <ProjectReference Include="../Checking.Application/Checking.Application.csproj" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="RabbitMQ.Client" />
+  </ItemGroup>
+</Project>

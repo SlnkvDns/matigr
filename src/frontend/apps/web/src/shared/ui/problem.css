@@ -1,0 +1,4 @@
+.api-problem { padding: 24px; border: 1px solid #ddc7b8; background: #fcf6ef; border-radius: 10px; }
+.api-problem h2 { margin: 0 0 10px; font-size: 18px; font-weight: 600; }
+.api-problem p { margin: 0; font-size: 14px; line-height: 1.7; }
+.api-problem .api-problem-reference { margin-top: 14px; color: #746559; font-size: 12px; overflow-wrap: anywhere; }

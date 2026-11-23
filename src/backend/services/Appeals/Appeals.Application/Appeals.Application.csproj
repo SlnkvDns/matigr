@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="../Appeals.Domain/Appeals.Domain.csproj" />
+  </ItemGroup>
+</Project>
