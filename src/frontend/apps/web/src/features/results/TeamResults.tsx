@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import type { components } from '../../shared/api/generated/results';
 import { ApiProtocolError } from '../../shared/api/http';
@@ -21,30 +21,49 @@ export function readTeamResults(value: unknown, tournament: string): Mine {
 
 type TeamResultsProps = { tournament: string; snapshotVersion?: string | undefined; tasks?: components['schemas']['StandingsSnapshot']['tasks'] | undefined };
 export function TeamResults(props: TeamResultsProps) {
-  return <PrivateSessionBoundary><PrivateResults {...props} /></PrivateSessionBoundary>;
+  return <PrivateSessionBoundary><PrivateResults key={props.tournament} {...props} /></PrivateSessionBoundary>;
 }
 function PrivateResults({ tournament, snapshotVersion, tasks }: TeamResultsProps) {
   const { session, snapshot } = useSession();
+  const revision = snapshot.revision;
   const allowed = snapshot.profile?.roles.includes('Team') && snapshot.profile.tournamentIds.includes(tournament);
-  const [mine, setMine] = useState<Mine>(); const [error, setError] = useState<unknown>();
-  const [loading, setLoading] = useState(false); const sequence = useRef(0);
-  const cancellation = useRef<AbortController | undefined>(undefined);
-  async function load() {
-    const generation = ++sequence.current; cancellation.current?.abort();
-    const abort = new AbortController(); cancellation.current = abort;
-    setLoading(true); setError(undefined);
+  const [mine, setMine] = useState<Mine>();
+  const [error, setError] = useState<unknown>();
+  const [loading, setLoading] = useState(false);
+  const reading = useRef<{ abort: AbortController; refreshQueued: boolean } | undefined>(undefined);
+  const load = useCallback(async function load() {
+    if (session.getSnapshot().revision !== revision) return;
+    if (reading.current) {
+      reading.current.refreshQueued = true;
+      return;
+    }
+    const pending = { abort: new AbortController(), refreshQueued: false };
+    reading.current = pending;
+    const isCurrent = () => reading.current === pending && session.getSnapshot().revision === revision;
+    setLoading(true);
+    setError(undefined);
     try {
-      const r = await session.workspace().client('/api/v1/results').get<unknown>(`/me/tournaments/${encodeURIComponent(tournament)}/results`, { signal: abort.signal });
-      const value = readTeamResults(r.data, tournament);
-      if (generation === sequence.current && !abort.signal.aborted) setMine(value);
-    } catch (e) { if (generation === sequence.current && !abort.signal.aborted) setError(e); }
-    finally { if (generation === sequence.current && !abort.signal.aborted) setLoading(false); }
-  }
+      const response = await session.workspace().client('/api/v1/results').get<unknown>(
+        `/me/tournaments/${encodeURIComponent(tournament)}/results`, { signal: pending.abort.signal });
+      if (isCurrent()) setMine(readTeamResults(response.data, tournament));
+    } catch (error) {
+      if (isCurrent()) setError(error);
+    } finally {
+      if (isCurrent()) {
+        reading.current = undefined;
+        if (pending.refreshQueued) void load();
+        else setLoading(false);
+      }
+    }
+  }, [session, revision, tournament]);
+  useEffect(() => () => {
+    const pending = reading.current;
+    reading.current = undefined;
+    pending?.abort.abort();
+  }, []);
   useEffect(() => {
-    setMine(undefined);
     if (allowed) void load();
-    return () => { ++sequence.current; cancellation.current?.abort(); };
-  }, [allowed, tournament, snapshotVersion]);
+  }, [allowed, snapshotVersion, load]);
   if (!allowed) return null;
   return <section aria-label="Мои результаты"><h2>Результаты вашей команды</h2>
     <button disabled={loading} onClick={() => void load()}>Обновить мои результаты</button>
