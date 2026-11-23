@@ -5,6 +5,46 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 namespace Results.Persistence.Tests;
 public partial class StorageTests
 {
+    private sealed class PublicationBarrier : SaveChangesInterceptor
+    {
+        public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public TaskCompletionSource Release { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override async ValueTask<InterceptionResult<int>> SavingChangesAsync(DbContextEventData data,
+            InterceptionResult<int> result, CancellationToken ct = default)
+        {
+            Entered.TrySetResult();
+            await Release.Task.WaitAsync(TimeSpan.FromSeconds(15), ct);
+            return result;
+        }
+    }
+
+    [Fact]
+    public async Task Independent_results_prepare_in_parallel_and_commit_consecutive_snapshot_versions()
+    {
+        var first = await NewEvaluation();
+        var second = await SecondTask(first);
+        var barrier = new PublicationBarrier();
+        var options = new DbContextOptionsBuilder<ResultsDbContext>().UseNpgsql(fixture.Connection).AddInterceptors(barrier).Options;
+        await using var waitingWriter = new ResultsDbContext(options);
+        await using var writer = fixture.Open();
+        var held = new ApplyEvaluation(waitingWriter).InitialAsync(first, Guid.NewGuid(), "first");
+        await barrier.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        try
+        {
+            using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var latest = await new ApplyEvaluation(writer).InitialAsync(second, Guid.NewGuid(), "second", timeout.Token);
+            Assert.Equal("Applied", latest.Status);
+            var partial = await new ResultReads(writer).StandingsAsync(first.Key.TournamentId, timeout.Token);
+            Assert.Equal("1", partial.SnapshotVersion);
+            Assert.Equal("20", Assert.Single(partial.Teams).Total);
+        }
+        finally { barrier.Release.TrySetResult(); }
+        Assert.Equal("Applied", (await held).Status);
+        var complete = await new ResultReads(writer).StandingsAsync(first.Key.TournamentId, default);
+        Assert.Equal("2", complete.SnapshotVersion);
+        Assert.Equal("30", Assert.Single(complete.Teams).Total);
+    }
+
     private sealed class ReadBarrier : DbCommandInterceptor
     {
         public TaskCompletionSource Entered { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);

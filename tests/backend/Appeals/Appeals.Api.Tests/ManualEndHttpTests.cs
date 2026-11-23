@@ -24,12 +24,20 @@ public class ManualEndHttpTests
         }
     }
     [Theory]
-    [InlineData("Production")]
-    [InlineData("Staging")]
-    [InlineData("Development")]
-    public async Task Manual_end_route_does_not_exist_outside_Local_or_Test(string environment)
+    [InlineData("Production", "true")]
+    [InlineData("Staging", "true")]
+    [InlineData("Development", "true")]
+    [InlineData("Local", null)]
+    public async Task Manual_end_route_requires_an_enabled_local_or_test_profile(string environment, string? enabled)
     {
-        await using var host = new WebApplicationFactory<Program>().WithWebHostBuilder(b => b.UseEnvironment(environment));
+        await using var host = new WebApplicationFactory<Program>().WithWebHostBuilder(b =>
+        {
+            b.UseEnvironment(environment);
+            b.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?> {
+                ["ManualEnd:Enabled"] = enabled,
+                ["Storage:ApplyMigrations"] = "false"
+            }));
+        });
         using var client = host.CreateClient();
         Assert.Equal(HttpStatusCode.NotFound, (await client.PostAsJsonAsync($"/dev/v1/tournaments/{Guid.NewGuid()}/end-facts", new { factId = Guid.NewGuid() })).StatusCode);
     }

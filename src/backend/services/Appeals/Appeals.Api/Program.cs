@@ -9,7 +9,9 @@ builder.Services.AddAppealsInfrastructure(builder.Configuration);
 builder.Services.AddAppealSubmissions();
 var app = builder.Build();
 
-if (app.Environment.IsEnvironment("Local"))
+var migrateOnly = builder.Configuration.GetValue<bool>("Storage:MigrateOnly");
+if (migrateOnly && !app.Environment.IsEnvironment("Local")) throw new InvalidOperationException("Local database bootstrap requires Local.");
+if (app.Environment.IsEnvironment("Local") && app.Configuration.GetValue("Storage:ApplyMigrations", true))
 {
     var manifestPath = builder.Configuration["Fixtures:ManifestPath"]
         ?? throw new InvalidOperationException("Fixtures:ManifestPath is required in Local environment.");
@@ -18,6 +20,11 @@ if (app.Environment.IsEnvironment("Local"))
     await database.Database.MigrateAsync();
     await scope.ServiceProvider.GetRequiredService<AppealsFixtureWindowSeeder>()
         .EnsureOpenFixtureAsync(manifestPath, CancellationToken.None);
+}
+if (migrateOnly)
+{
+    await LocalDatabaseRoles.GrantRuntimeAsync(app.Configuration, "Appeals");
+    return;
 }
 
 if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;

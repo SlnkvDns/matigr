@@ -10,7 +10,7 @@ namespace Matigr.Results.Api.Tests;
 
 public class StandingsEventsTests
 {
-    private sealed class Source : IResultReads, ISnapshotVersions
+    private sealed class Source : IStandingsSource, ISnapshotVersions
     {
         public long Version = 9007199254740993L;
         public int Builds;
@@ -24,14 +24,17 @@ public class StandingsEventsTests
             await ReleaseBuild.Task.WaitAsync(ct);
             return new(tournament.ToString("D"), await CurrentAsync(tournament, ct), [], []);
         }
-        public Task<MyTournamentResults> TeamAsync(Guid tournament, Guid team, CancellationToken ct) => throw new NotSupportedException();
-        public Task<PublishedAppealBasis> BasisAsync(Guid result, long expectedVersion, CancellationToken ct) => throw new NotSupportedException();
     }
 
-    private static WebApplicationFactory<Program> Host(Source source) => new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+    private static WebApplicationFactory<Program> Host(Source source, int maxConnections = 512, int newConnectionsPerSecond = 32) =>
+        new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
     {
-        builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?> { ["Snapshots:Listen"] = "false" }));
-        builder.ConfigureServices(s => { s.AddSingleton<ISnapshotVersions>(source); s.AddSingleton<IResultReads>(source); });
+        builder.ConfigureAppConfiguration((_, c) => c.AddInMemoryCollection(new Dictionary<string, string?> {
+            ["Snapshots:Listen"] = "false",
+            ["Snapshots:MaxConnections"] = maxConnections.ToString(),
+            ["Snapshots:NewConnectionsPerSecond"] = newConnectionsPerSecond.ToString()
+        }));
+        builder.ConfigureServices(s => { s.AddSingleton<ISnapshotVersions>(source); s.AddSingleton<IStandingsSource>(source); });
     });
 
     [Fact]
@@ -63,6 +66,28 @@ public class StandingsEventsTests
         Assert.Equal(HttpStatusCode.OK, changed.StatusCode);
         Assert.Equal("\"9007199254740994\"", changed.Headers.ETag!.Tag);
         Assert.Equal(2, source.Builds);
+    }
+
+    [Theory]
+    [InlineData(1, 32)]
+    [InlineData(32, 1)]
+    public async Task Public_socket_rejects_excess_connections_while_GET_remains_available(int maxConnections, int newConnectionsPerSecond)
+    {
+        var source = new Source();
+        source.ReleaseBuild.SetResult();
+        await using var host = Host(source, maxConnections, newConnectionsPerSecond);
+        using var client = host.CreateClient();
+        using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(10));
+        var path = $"/api/v1/results/tournaments/{Guid.NewGuid()}/standings";
+        var uri = new Uri("ws://localhost" + path + "/events");
+        var ws = host.Server.CreateWebSocketClient();
+        using var one = await ws.ConnectAsync(uri, stop.Token);
+        var rejection = await Record.ExceptionAsync(() => ws.ConnectAsync(uri, stop.Token));
+        Assert.NotNull(rejection);
+        Assert.Contains("429", rejection.Message);
+        using var http = await client.GetAsync(path, stop.Token);
+        Assert.Equal(HttpStatusCode.OK, http.StatusCode);
+        Assert.Equal(http.Headers.ETag!.Tag.Trim('"'), await Frame(one, stop.Token));
     }
 
     [Fact]

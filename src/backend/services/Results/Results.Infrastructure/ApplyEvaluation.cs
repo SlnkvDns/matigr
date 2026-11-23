@@ -1,4 +1,6 @@
 using System.Security.Cryptography;
+using System.Diagnostics;
+using System.Diagnostics.Metrics;
 using System.Text;
 using System.Text.Json;
 using Matigr.Results.Application;
@@ -10,6 +12,8 @@ namespace Matigr.Results.Infrastructure;
 internal sealed partial class ApplyEvaluation(ResultsDbContext db) : IApplyEvaluation
 {
     private const string Consumer = "Results.CheckCompleted.v1";
+    private static readonly Meter PublicationMetrics = new("Matigr.Results.Publication");
+    private static readonly Histogram<double> SnapshotUpdate = PublicationMetrics.CreateHistogram<double>("matigr.results.snapshot.update.duration", "ms");
     internal static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     internal static string Exact(decimal value) => value.ToString("0", System.Globalization.CultureInfo.InvariantCulture);
     internal static string Version(long value) => value.ToString(System.Globalization.CultureInfo.InvariantCulture);
@@ -35,10 +39,10 @@ internal sealed partial class ApplyEvaluation(ResultsDbContext db) : IApplyEvalu
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
             return new(previous.Status, previous.Response);
         }
-        var snapshots = await db.Snapshots.FromSqlInterpolated($"SELECT * FROM tournament_snapshots WHERE tournament_id = {e.Key.TournamentId} FOR UPDATE").ToListAsync(ct);
-        var snapshot = snapshots.SingleOrDefault();
+        await LockResultAsync(e, ct);
+        var hasSnapshot = await db.Snapshots.AnyAsync(x => x.TournamentId == e.Key.TournamentId, ct);
         var rule = await db.Rules.AsNoTracking().SingleOrDefaultAsync(x => x.TournamentId == e.Key.TournamentId && x.TaskId == e.Key.TaskId, ct);
-        if (snapshot is null || rule is null || !await db.Teams.AnyAsync(x => x.TournamentId == e.Key.TournamentId && x.TeamId == e.Key.TeamId, ct))
+        if (!hasSnapshot || rule is null || !await db.Teams.AnyAsync(x => x.TournamentId == e.Key.TournamentId && x.TeamId == e.Key.TeamId, ct))
         {
             var deferred = await db.Failures.SingleOrDefaultAsync(x => x.Consumer == Consumer && x.MessageId == messageId, ct);
             if (deferred is null) db.Failures.Add(new() { FailureId = Guid.NewGuid(), Consumer = Consumer, MessageId = messageId,
@@ -57,7 +61,6 @@ internal sealed partial class ApplyEvaluation(ResultsDbContext db) : IApplyEvalu
                 TaskId = e.Key.TaskId, SolutionId = e.SolutionId, MaterialVersionId = e.MaterialVersionId, ResultVersion = 1,
                 Score = publication.Score, Outcome = e.Outcome.ToString(), PublicationId = publication.PublicationId, Publication = json });
             db.Publications.Add(new() { PublicationId = publication.PublicationId, ResultId = publication.ResultId, ResultVersion = 1, Snapshot = json });
-            snapshot!.Version = checked(snapshot.Version + 1); snapshot.UpdatedAt = now;
         }
         var status = publication is null ? "Rejected" : "Applied";
         // Initial receipts are local, with no required external consumer. Appeal wire schemas remain separate.
@@ -73,7 +76,30 @@ internal sealed partial class ApplyEvaluation(ResultsDbContext db) : IApplyEvalu
         var failure = await db.Failures.SingleOrDefaultAsync(x => x.Consumer == Consumer && x.MessageId == messageId, ct);
         if (failure is not null) failure.State = "Resolved";
         // Primary acknowledgement is the durable receipt above. No duplicate public event is introduced.
-        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct);
+        await db.SaveChangesAsync(ct);
+        if (publication is not null) await AdvanceSnapshotAsync(e.Key.TournamentId, now, ct);
+        await tx.CommitAsync(ct);
         return new(status, response);
+    }
+
+    private Task LockResultAsync(Evaluation evaluation, CancellationToken ct)
+    {
+        var key = evaluation.Key;
+        var mutex = $"result/{key.TournamentId:D}/{key.TeamId:D}/{key.TaskId:D}";
+        return db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({mutex}, 0))", ct);
+    }
+
+    private async Task AdvanceSnapshotAsync(Guid tournament, DateTimeOffset updatedAt, CancellationToken ct)
+    {
+        var started = Stopwatch.GetTimestamp();
+        try
+        {
+            var affected = await db.Database.ExecuteSqlInterpolatedAsync($"""
+                UPDATE tournament_snapshots SET version = version + 1, updated_at = greatest(updated_at, {updatedAt})
+                WHERE tournament_id = {tournament}
+                """, ct);
+            if (affected != 1) throw new InvalidOperationException("The publication requires an existing tournament snapshot.");
+        }
+        finally { SnapshotUpdate.Record(Stopwatch.GetElapsedTime(started).TotalMilliseconds); }
     }
 }

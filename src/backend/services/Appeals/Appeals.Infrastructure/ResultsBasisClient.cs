@@ -30,11 +30,14 @@ internal sealed class ResultsBasisClient(HttpClient http, IConfiguration config)
             using var request = new HttpRequestMessage(HttpMethod.Get, $"/internal/v1/results/{result:D}/appeal-basis?expectedResultVersion={expectedVersion.ToString(CultureInfo.InvariantCulture)}");
             request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
             request.Headers.CacheControl = new CacheControlHeaderValue { NoCache = true, NoStore = true };
-            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            deadline.CancelAfter(http.Timeout);
+            using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, deadline.Token);
             if (response.StatusCode == HttpStatusCode.NotFound) throw new AppealOperationException(404, "PublishedResultNotFound");
             if (response.StatusCode == HttpStatusCode.Conflict) throw new AppealOperationException(409, "ResultVersionConflict");
             if (response.StatusCode != HttpStatusCode.OK) throw new AppealOperationException(503, "ResultsUnavailable");
-            using var json = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(ct), cancellationToken: ct);
+            await using var body = await response.Content.ReadAsStreamAsync(deadline.Token);
+            using var json = await JsonDocument.ParseAsync(body, cancellationToken: deadline.Token);
             var p = json.RootElement; Guid Id(string name) => p.GetProperty(name).GetGuid();
             var versionText = p.GetProperty("resultVersion").GetString();
             if (p.GetProperty("publicationState").GetString() != "Published" || Id("resultId") != result

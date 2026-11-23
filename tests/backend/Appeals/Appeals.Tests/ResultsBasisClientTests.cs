@@ -14,6 +14,57 @@ public class ResultsBasisClientTests
 {
     private sealed class Reply(Func<HttpRequestMessage, CancellationToken, Task<HttpResponseMessage>> send) : HttpMessageHandler
     { protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct) => send(request, ct); }
+    private sealed class WaitingBody : MemoryStream
+    {
+        public TaskCompletionSource Reading { get; } = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        public override async ValueTask<int> ReadAsync(Memory<byte> buffer, CancellationToken cancellationToken = default)
+        {
+            Reading.TrySetResult();
+            await Task.Delay(Timeout.InfiniteTimeSpan, cancellationToken);
+            return 0;
+        }
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Response_body_shares_the_HTTP_deadline_and_caller_cancellation_still_propagates(bool cancelCaller)
+    {
+        using var rsa = RSA.Create(3072);
+        var file = Path.Combine(Path.GetTempPath(), $"appeals-body-{Guid.NewGuid():N}.pem");
+        await File.WriteAllTextAsync(file, rsa.ExportPkcs8PrivateKeyPem());
+        try
+        {
+            using var body = new WaitingBody();
+            using var http = new HttpClient(new Reply((_, _) =>
+                Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK) { Content = new StreamContent(body) }))) {
+                BaseAddress = new Uri("http://results.invalid"),
+                Timeout = TimeSpan.FromMilliseconds(cancelCaller ? 5000 : 200)
+            };
+            var config = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?> {
+                ["ResultsServiceIdentity:PrivateKeyPath"] = file, ["ResultsServiceIdentity:Issuer"] = "service-test", ["ResultsServiceIdentity:Audience"] = "results-internal"
+            }).Build();
+            using var caller = new CancellationTokenSource();
+            var pending = new ResultsBasisClient(http, config).GetAsync(Guid.NewGuid(), 1, caller.Token);
+            try
+            {
+                await body.Reading.Task.WaitAsync(TimeSpan.FromSeconds(3));
+                if (cancelCaller)
+                {
+                    caller.Cancel();
+                    await Assert.ThrowsAnyAsync<OperationCanceledException>(() => pending.WaitAsync(TimeSpan.FromSeconds(3)));
+                }
+                else
+                {
+                    var error = await Assert.ThrowsAsync<AppealOperationException>(() => pending.WaitAsync(TimeSpan.FromSeconds(3)));
+                    Assert.Equal(503, error.Status);
+                    Assert.Equal("ResultsUnavailable", error.Code);
+                }
+            }
+            finally { caller.Cancel(); }
+        }
+        finally { File.Delete(file); }
+    }
     [Theory]
     [InlineData(200, "valid", 200)]
     [InlineData(404, "valid", 404)]

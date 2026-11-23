@@ -14,7 +14,10 @@ async function secret(name) {
   if (!/^[a-f0-9]{64}$/.test(value)) throw new Error(`Invalid persisted secret: ${name}; refusing to rotate it`);
   return value;
 }
-for (const service of ['checking', 'results', 'appeals']) await secret(`${service}_db_password`);
+for (const service of ['checking', 'results', 'appeals']) {
+  await secret(`${service}_db_password`);
+  await secret(`${service}_runtime_password`);
+}
 const servicePrivate = path.join(secrets, 'appeals-results-private.pem');
 const servicePublic = path.join(secrets, 'appeals-results-public.pem');
 async function existing(file) { try { return await readFile(file, 'utf8'); } catch (e) { if (e.code === 'ENOENT') return null; throw e; } }

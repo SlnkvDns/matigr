@@ -320,6 +320,16 @@ export interface operations {
                 };
             };
             404: components["responses"]["NotFound"];
+            /** @description Replica connection or upgrade rate limit exceeded. Public GET remains available. */
+            429: {
+                headers: {
+                    "Retry-After"?: string;
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/problem+json": components["schemas"]["ProblemDetails"];
+                };
+            };
             503: components["responses"]["Unavailable"];
         };
     };

@@ -35,7 +35,7 @@ public static class IdentityHttp
 
     public static void MapDevIdentity(this WebApplication app)
     {
-        if (!app.Environment.HasDevIdentity()) return;
+        if (!app.Environment.HasDevIdentity() || !app.Configuration.GetValue("DevIdentity:Enabled", app.Environment.IsEnvironment("Test"))) return;
         // Fail startup on a broken fixture/key setup instead of rotating keys or issuing partial identities.
         _ = app.Services.GetRequiredService<DevSubjectDirectory>();
         _ = app.Services.GetRequiredService<DevSessionIssuer>();

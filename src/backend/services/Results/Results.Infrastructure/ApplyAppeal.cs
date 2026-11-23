@@ -27,9 +27,10 @@ internal sealed partial class ApplyEvaluation
             if (inbox is null) db.Inbox.Add(new() { Consumer = Consumer, MessageId = messageId, PayloadHash = hash, ProcessedAt = DateTimeOffset.UtcNow });
             await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return new(previous.Status, previous.Response);
         }
-        var snapshot = (await db.Snapshots.FromSqlInterpolated($"SELECT * FROM tournament_snapshots WHERE tournament_id={e.Key.TournamentId} FOR UPDATE").ToListAsync(ct)).SingleOrDefault();
+        await LockResultAsync(e, ct);
+        var hasSnapshot = await db.Snapshots.AnyAsync(x => x.TournamentId == e.Key.TournamentId, ct);
         var row = await db.Results.SingleOrDefaultAsync(x => x.TournamentId == e.Key.TournamentId && x.TeamId == e.Key.TeamId && x.TaskId == e.Key.TaskId, ct);
-        if (snapshot is null || row is null) return new("Deferred", "{}");
+        if (!hasSnapshot || row is null) return new("Deferred", "{}");
         var before = JsonSerializer.Deserialize<ResultPublication>(row.Publication, Json) ?? throw new InvalidOperationException("Invalid stored publication.");
         var result = new TeamTaskResult(before);
         var now = DateTimeOffset.UtcNow;
@@ -58,7 +59,6 @@ internal sealed partial class ApplyEvaluation
                 row.ResultVersion = p.ResultVersion; row.Score = p.Score; row.Outcome = p.Source.Outcome.ToString();
                 row.PublicationId = p.PublicationId; row.Publication = json;
                 db.Publications.Add(new() { PublicationId = p.PublicationId, ResultId = p.ResultId, ResultVersion = p.ResultVersion, Snapshot = json });
-                snapshot.Version = checked(snapshot.Version + 1); snapshot.UpdatedAt = now;
             }
         } else {
             payload["actualResultVersion"] = Version(before.ResultVersion); payload["reasonCode"] = receipt.ReasonCode;
@@ -74,6 +74,9 @@ internal sealed partial class ApplyEvaluation
         db.Outbox.Add(new() { MessageId = message, Envelope = envelope, RoutingKey = $"results.result-evaluation-{suffix}.appeal.v1", CreatedAt = now, NextAttemptAt = now });
         var failure = await db.Failures.SingleOrDefaultAsync(x => x.Consumer == Consumer && x.MessageId == messageId, ct);
         if (failure is not null) failure.State = "Resolved";
-        await db.SaveChangesAsync(ct); await tx.CommitAsync(ct); return new(status, envelope);
+        await db.SaveChangesAsync(ct);
+        if (receipt.Changed) await AdvanceSnapshotAsync(e.Key.TournamentId, now, ct);
+        await tx.CommitAsync(ct);
+        return new(status, envelope);
     }
 }

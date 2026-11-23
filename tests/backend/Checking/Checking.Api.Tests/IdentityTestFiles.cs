@@ -32,7 +32,7 @@ public sealed class IdentityTestFiles : IDisposable
     {
         ["Identity:Issuer"] = "matigr-local", ["Identity:Audience"] = "matigr-user-api",
         ["Identity:PublicKeyPath"] = PublicKeyPath,
-        ["DevIdentity:PrivateKeyPath"] = PrivateKeyPath, ["DevIdentity:LifetimeSeconds"] = "3600",
+        ["DevIdentity:PrivateKeyPath"] = PrivateKeyPath, ["DevIdentity:LifetimeSeconds"] = "3600", ["DevIdentity:Enabled"] = "true",
         ["Fixtures:Directory"] = FixturesDirectory,
         ["StorageProtection:KeyPath"] = StorageKeyPath,
         ["Storage:ApplyMigrations"] = "false"

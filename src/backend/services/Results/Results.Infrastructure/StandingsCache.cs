@@ -92,7 +92,7 @@ public sealed class StandingsCache(IServiceScopeFactory scopes, IHostApplication
             if (Volatile.Read(ref entry.Current) is { } current && current.Version >= version) return current;
             await using var scope = scopes.CreateAsyncScope();
             // The shared rebuild survives cancellation of the particular viewer who started it.
-            var snapshot = await scope.ServiceProvider.GetRequiredService<IResultReads>()
+            var snapshot = await scope.ServiceProvider.GetRequiredService<IStandingsSource>()
                 .StandingsAsync(tournament, lifetime.ApplicationStopping);
             var published = new CachedStandings(ParseVersion(snapshot.SnapshotVersion), JsonSerializer.SerializeToUtf8Bytes(snapshot, Json));
             lock (entry.Subscribers)

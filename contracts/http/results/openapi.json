@@ -41,6 +41,7 @@
           "101": { "description": "WebSocket upgrade for the public standings subscription" },
           "400": { "description": "WebSocket upgrade required", "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
           "404": { "$ref": "#/components/responses/NotFound" },
+          "429": { "description": "Replica connection or upgrade rate limit exceeded. Public GET remains available.", "headers": { "Retry-After": { "schema": { "type": "string" } } }, "content": { "application/problem+json": { "schema": { "$ref": "#/components/schemas/ProblemDetails" } } } },
           "503": { "$ref": "#/components/responses/Unavailable" }
         }
       }

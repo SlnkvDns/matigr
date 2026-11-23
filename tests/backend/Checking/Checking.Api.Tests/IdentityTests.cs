@@ -91,20 +91,25 @@ public class IdentityTests(IdentityTestFiles files) : IClassFixture<IdentityTest
     }
 
     [Theory]
-    [InlineData("Production")]
-    [InlineData("Staging")]
-    [InlineData("Development")]
-    public async Task Dev_route_and_issuer_services_are_absent_outside_explicit_Local_Test(string environment)
+    [InlineData("Production", "true")]
+    [InlineData("Staging", "true")]
+    [InlineData("Development", "true")]
+    [InlineData("Local", null)]
+    public async Task Dev_route_and_issuer_services_require_an_enabled_local_or_test_profile(string environment, string? enabled)
     {
         await using var factory = files.Factory(environment, new()
         {
-            ["Fixtures:Directory"] = "does-not-exist", ["DevIdentity:PrivateKeyPath"] = "does-not-exist"
+            ["Fixtures:Directory"] = "does-not-exist", ["DevIdentity:PrivateKeyPath"] = "does-not-exist",
+            ["DevIdentity:Enabled"] = enabled
         });
         using var client = factory.CreateClient();
         await AssertProblem(await client.PostAsJsonAsync("/dev/v1/session/select", new { testSubjectId = "jury-a" }),
             HttpStatusCode.NotFound, "NotFound");
-        Assert.Null(factory.Services.GetService<DevSessionIssuer>());
-        Assert.Null(factory.Services.GetService<DevSubjectDirectory>());
+        if (environment != "Local")
+        {
+            Assert.Null(factory.Services.GetService<DevSessionIssuer>());
+            Assert.Null(factory.Services.GetService<DevSubjectDirectory>());
+        }
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/live")).StatusCode);
     }
 

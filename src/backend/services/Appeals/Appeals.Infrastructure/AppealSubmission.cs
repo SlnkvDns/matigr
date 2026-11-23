@@ -30,8 +30,11 @@ internal sealed class AppealSubmission(AppealsDbContext db, IResultsBasis result
         var mutex = $"{actor.SubjectId:D}/{operation}/{storageKey}";
         await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({mutex},0))", ct);
         if (await Replay() is { } concurrent) return concurrent;
-        var window = (await db.SubmissionWindows.FromSqlInterpolated($"SELECT * FROM submission_windows WHERE tournament_id={basis.TournamentId} FOR UPDATE").ToListAsync(ct)).SingleOrDefault()
+        // Concurrent submissions share the window lock; closing the window still takes an exclusive lock.
+        var window = (await db.SubmissionWindows.FromSqlInterpolated($"SELECT * FROM submission_windows WHERE tournament_id={basis.TournamentId} FOR SHARE").ToListAsync(ct)).SingleOrDefault()
             ?? throw new AppealOperationException(404, "TournamentNotFound");
+        var quotaMutex = $"appeal-quota/{basis.TournamentId:D}/{basis.TeamId:D}/{basis.TaskId:D}";
+        await db.Database.ExecuteSqlInterpolatedAsync($"SELECT pg_advisory_xact_lock(hashtextextended({quotaMutex},0))", ct);
         var quota = await db.Appeals.AnyAsync(x => x.TournamentId == basis.TournamentId && x.TeamId == basis.TeamId && x.TaskId == basis.TaskId, ct);
         var now = DateTimeOffset.UtcNow; now = now.AddTicks(-(now.Ticks % 10));
         Appeal appeal;

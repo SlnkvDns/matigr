@@ -29,14 +29,21 @@ builder.Services.AddSingleton<ICheckingReadiness>(provider => new CheckingReadin
         RequestedConnectionTimeout = TimeSpan.FromSeconds(2)
     }, builder.Configuration.GetValue<bool>("Transport:Enabled") ? provider.GetRequiredService<TransportHealth>() : null));
 var app = builder.Build();
-_ = app.Services.GetRequiredService<UserTokenVerifier>();
-_ = app.Services.GetRequiredService<StorageProtection>();
+var migrateOnly = builder.Configuration.GetValue<bool>("Storage:MigrateOnly");
+if (migrateOnly && !app.Environment.IsEnvironment("Local")) throw new InvalidOperationException("Local database bootstrap requires Local.");
 if (app.Environment.IsEnvironment("Local") && builder.Configuration.GetValue("Storage:ApplyMigrations", true))
 {
     await using var scope = app.Services.CreateAsyncScope();
     await scope.ServiceProvider.GetRequiredService<CheckingDbContext>().Database.MigrateAsync();
     await scope.ServiceProvider.BootstrapPreparedCheckingFixturesAsync(CancellationToken.None);
 }
+if (migrateOnly)
+{
+    await LocalDatabaseRoles.GrantRuntimeAsync(app.Configuration, "Checking");
+    return;
+}
+_ = app.Services.GetRequiredService<UserTokenVerifier>();
+_ = app.Services.GetRequiredService<StorageProtection>();
 if (await TransportOperations.RunAsync(app.Services, app.Configuration)) return;
 app.UseExceptionHandler();
 app.UsePrivateIdentityResponses();

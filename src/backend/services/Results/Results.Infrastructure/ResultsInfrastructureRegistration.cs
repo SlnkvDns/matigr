@@ -11,7 +11,10 @@ public static class ResultsInfrastructureRegistration
     {
         services.AddResultsTransport(configuration);
         services.AddScoped<IApplyEvaluation, ApplyEvaluation>();
-        services.AddScoped<IResultReads, ResultReads>();
+        services.AddScoped<ResultReads>();
+        services.AddScoped<IStandingsSource>(provider => provider.GetRequiredService<ResultReads>());
+        services.AddScoped<ITeamResults>(provider => provider.GetRequiredService<ResultReads>());
+        services.AddScoped<IPublishedAppealBases>(provider => provider.GetRequiredService<ResultReads>());
         services.AddScoped<ISnapshotVersions, SnapshotVersions>();
         services.AddSingleton<StandingsCache>();
         services.AddHostedService<StandingsNotifications>();

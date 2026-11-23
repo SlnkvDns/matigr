@@ -14,7 +14,9 @@ internal static class WorkEndpoints
         app.MapGet("/api/v1/appeals/tournaments/{tournamentId}", async (string tournamentId, HttpContext ctx, IAppealWork work) => {
             var actor = await AppealsIdentity.Verify(ctx, app.Configuration); if (actor is null) return Error(ctx, 401, "Unauthorized");
             if (!Guid.TryParse(tournamentId, out var t) || (ctx.Request.Query.ContainsKey("state") && ctx.Request.Query["state"] != "Registered")) return Error(ctx, 400, "InvalidRequest");
-            return Reply(ctx, await work.ListAsync(actor, t, false, ctx.RequestAborted));
+            var cursor = ctx.Request.Query["cursor"];
+            if (cursor.Count > 1 || cursor.Count == 1 && string.IsNullOrEmpty(cursor[0])) return Error(ctx, 400, "InvalidRequest");
+            return Reply(ctx, await work.ListAsync(actor, t, false, ctx.RequestAborted, cursor.Count == 1 ? cursor[0] : null));
         });
         app.MapGet("/api/v1/appeals/{appealId}", async (string appealId, HttpContext ctx, IAppealWork work) => {
             var actor = await AppealsIdentity.Verify(ctx, app.Configuration); if (actor is null) return Error(ctx, 401, "Unauthorized");

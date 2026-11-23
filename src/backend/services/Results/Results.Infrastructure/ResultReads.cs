@@ -6,7 +6,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Matigr.Results.Infrastructure;
 
-internal sealed class ResultReads(ResultsDbContext db) : IResultReads
+internal sealed class ResultReads(ResultsDbContext db) : IStandingsSource, ITeamResults, IPublishedAppealBases
 {
     private sealed class TotalRank { public Guid TeamId { get; set; } public decimal Total { get; set; } public long Rank { get; set; } }
     public async Task<StandingsSnapshot> StandingsAsync(Guid tournament, CancellationToken ct)

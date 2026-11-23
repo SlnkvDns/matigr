@@ -177,6 +177,7 @@ export interface components {
         AppealQueue: {
             tournamentId: components["schemas"]["OpaqueId"];
             items: components["schemas"]["AppealSummary"][];
+            nextCursor?: string;
         };
         AppealView: {
             appealId: components["schemas"]["OpaqueId"];
@@ -407,6 +408,8 @@ export interface operations {
             query?: {
                 /** @description Optional explicit filter; only Registered is supported by this queue. */
                 state?: "Registered";
+                /** @description Opaque nextCursor from an earlier page of this tournament. */
+                cursor?: string;
             };
             header?: never;
             path: {
@@ -416,7 +419,7 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description Registered queue; each item contains only the minimum basis/status needed for a manual choice */
+            /** @description Up to 50 registered appeals ordered by submission time and ID; nextCursor is provided when more appeals are available. */
             200: {
                 headers: {
                     "Cache-Control": components["headers"]["PrivateCache"];
@@ -426,6 +429,7 @@ export interface operations {
                     "application/json": components["schemas"]["AppealQueue"];
                 };
             };
+            400: components["responses"]["InvalidRequest"];
             401: components["responses"]["Unauthorized"];
             403: components["responses"]["Forbidden"];
             503: components["responses"]["Unavailable"];

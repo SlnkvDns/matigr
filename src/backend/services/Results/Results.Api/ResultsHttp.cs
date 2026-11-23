@@ -23,7 +23,7 @@ public static class ResultsHttp
                 return HttpResults.StatusCode(StatusCodes.Status304NotModified);
             return HttpResults.Bytes(view.Json, "application/json");
         }));
-        app.MapGet("/api/v1/results/me/tournaments/{tournamentId}/results", (string tournamentId, HttpContext context, IResultReads reads, IConfiguration config, CancellationToken ct) => Guard(context, async () => {
+        app.MapGet("/api/v1/results/me/tournaments/{tournamentId}/results", (string tournamentId, HttpContext context, ITeamResults reads, IConfiguration config, CancellationToken ct) => Guard(context, async () => {
             context.Response.Headers.CacheControl = "private, no-store";
             var user = await ResultsIdentity.Verify(context, config, false);
             if (user is null) { context.Response.Headers.WWWAuthenticate = "Bearer"; return Problem(context, 401, "Unauthorized"); }
@@ -32,7 +32,7 @@ public static class ResultsHttp
                 return Problem(context, 403, "Forbidden");
             return HttpResults.Ok(await reads.TeamAsync(tournament, team, ct));
         }));
-        app.MapGet("/internal/v1/results/{resultId}/appeal-basis", (string resultId, HttpContext context, IResultReads reads, IConfiguration config, CancellationToken ct) => Guard(context, async () => {
+        app.MapGet("/internal/v1/results/{resultId}/appeal-basis", (string resultId, HttpContext context, IPublishedAppealBases reads, IConfiguration config, CancellationToken ct) => Guard(context, async () => {
             context.Response.Headers.CacheControl = "private, no-store";
             var service = await ResultsIdentity.Verify(context, config, true);
             if (service is null) { context.Response.Headers.WWWAuthenticate = "Bearer"; return Problem(context, 401, "Unauthorized"); }

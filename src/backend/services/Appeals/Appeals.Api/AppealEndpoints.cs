@@ -42,7 +42,8 @@ internal static class AppealEndpoints
             catch (Exception e) when (e is JsonException or FormatException or KeyNotFoundException) { await Error(context, 400, "InvalidRequest").ExecuteAsync(context); }
             catch (NpgsqlException) { await Error(context, 503, "DependencyUnavailable").ExecuteAsync(context); }
         });
-        if (app.Environment.IsEnvironment("Local") || app.Environment.IsEnvironment("Test"))
+        if ((app.Environment.IsEnvironment("Local") || app.Environment.IsEnvironment("Test"))
+            && app.Configuration.GetValue("ManualEnd:Enabled", app.Environment.IsEnvironment("Test")))
             app.MapPost("/dev/v1/tournaments/{tournamentId}/end-facts", async (string tournamentId, HttpContext ctx, IManualEnd end) => {
                 var actor = await AppealsIdentity.Verify(ctx, app.Configuration);
                 if (actor is null) return Error(ctx, 401, "Unauthorized");

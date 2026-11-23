@@ -5,7 +5,7 @@ import { ApiError, ApiProtocolError } from '../../shared/api/http';
 import { useSession } from '../../shared/auth/SessionContext';
 import { tournamentLocation } from '../../shared/tournament';
 import { ApiProblemNotice } from '../../shared/ui/ApiProblemNotice';
-import { appealName, exactVersion, readList, readView, reviewLabel, scheduleAppealRefresh, states } from './appeals';
+import { appealName, exactVersion, readQueue, readView, reviewLabel, scheduleAppealRefresh, states } from './appeals';
 import type { AppealSummary, AppealView } from './appeals';
 import type { Standings } from '../results/standings';
 
@@ -14,7 +14,8 @@ const submittedAt = new Intl.DateTimeFormat('ru-RU', { dateStyle: 'medium', time
 export function JuryAppeals({ tournament, standings }: { tournament: string; standings?: Standings | undefined }) {
   const [query] = useSearchParams();
   const checkingLocation = tournamentLocation('/checking', query.get('tournamentId'));
-  const { session, snapshot } = useSession(); const [items, setItems] = useState<AppealSummary[]>();
+  const { session, snapshot } = useSession();
+  const [page, setPage] = useState<(ReturnType<typeof readQueue> & { cursor: string | undefined })>();
   const [selection, setSelection] = useState<AppealSummary>();
   const [detail, setDetail] = useState<{ view: AppealView; own: boolean }>(); const [error, setError] = useState<unknown>();
   const [loading, setLoading] = useState(false); const [sending, setSending] = useState(false); const [retry, setRetry] = useState(false);
@@ -24,13 +25,14 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
   const pending = useRef<{ appealId: string; version: string; key: string } | undefined>(undefined); const inFlight = useRef(false);
   const queueSequence = useRef(0); const detailSequence = useRef(0);
   const queueAbort = useRef<AbortController | undefined>(undefined); const detailAbort = useRef<AbortController | undefined>(undefined); const commandAbort = useRef<AbortController | undefined>(undefined);
-  async function loadQueue(preserve = false) {
+  async function loadQueue(preserve = false, cursor?: string) {
     const generation = ++queueSequence.current; queueAbort.current?.abort(); const abort = new AbortController(); queueAbort.current = abort;
     setLoading(true); if (!preserve) setError(undefined);
     try {
-      const response = await session.workspace().client('/api/v1/appeals').get<unknown>(`/tournaments/${encodeURIComponent(tournament)}?state=Registered`, { signal: abort.signal });
-      const rows = readList(response.data, tournament);
-      if (generation === queueSequence.current && !abort.signal.aborted) setItems(rows);
+      const params = new URLSearchParams({ state: 'Registered', ...(cursor ? { cursor } : {}) });
+      const response = await session.workspace().client('/api/v1/appeals').get<unknown>(`/tournaments/${encodeURIComponent(tournament)}?${params}`, { signal: abort.signal });
+      const received = readQueue(response.data, tournament);
+      if (generation === queueSequence.current && !abort.signal.aborted) setPage({ ...received, cursor });
     } catch (e) { if (generation === queueSequence.current && !abort.signal.aborted) setError(e); }
     finally { if (generation === queueSequence.current && !abort.signal.aborted) setLoading(false); }
   }
@@ -53,7 +55,7 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
     finally { if (detailAbort.current === abort) { detailAbort.current = undefined; setReadingDetail(false); } }
   }
   useEffect(() => {
-    setItems(undefined); setSelection(undefined); setDetail(undefined); accepted.current = undefined;
+    setPage(undefined); setSelection(undefined); setDetail(undefined); accepted.current = undefined;
     pending.current = undefined; inFlight.current = false; setSending(false); setRetry(false); setReadingDetail(false);
     if (tournament) void loadQueue();
     return () => { ++queueSequence.current; ++detailSequence.current; queueAbort.current?.abort(); detailAbort.current?.abort(); detailAbort.current = undefined; commandAbort.current?.abort(); };
@@ -95,7 +97,7 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
   const awaiting = selected?.state === 'AcceptedAwaitingRecheck';
   const busy = detail?.view.state === 'Registered' && accepted.current?.appealId === detail.view.appealId;
   const blocked = sending || retry || awaiting || detail?.own;
-  const queue = items?.filter(item => item.appealId !== selected?.appealId || (!busy && !sending && !retry && selected?.state === 'Registered'));
+  const queue = page?.items.filter(item => item.appealId !== selected?.appealId || (!busy && !sending && !retry && selected?.state === 'Registered'));
   const selectionMessage = sending ? 'Запрашиваем назначение…'
     : retry ? 'Пока неизвестно, принято ли назначение.'
     : detail?.own ? 'Перепроверка назначена вам.'
@@ -128,7 +130,7 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
     <section aria-label="Очередь апелляций" className="appeals-panel">
       <div className="appeals-panel-heading">
         <div><h2>Очередь апелляций</h2><p>Возьмите одну апелляцию, чтобы лично перепроверить решение.</p></div>
-        <button className="appeals-button appeals-secondary" disabled={loading || sending} onClick={() => void loadQueue()}>Обновить очередь</button>
+        <button className="appeals-button appeals-secondary" disabled={loading || sending} onClick={() => void loadQueue(false, page?.cursor)}>Обновить очередь</button>
       </div>
       {loading && <p role="status" className="appeals-empty">Загрузка очереди…</p>}
       {!loading && queue?.length === 0 && <p className="appeals-empty">{selected ? 'Нет других апелляций, ожидающих перепроверки.' : 'Очередь пока пуста.'}</p>}
@@ -137,6 +139,12 @@ export function JuryAppeals({ tournament, standings }: { tournament: string; sta
           <time dateTime={item.submittedAt}>Подана {submittedAt.format(new Date(item.submittedAt))}</time></div>
         <button className="appeals-button" disabled={blocked} onClick={() => void claim(item)}>Взять на перепроверку</button>
       </li>)}</ul>
+      {(page?.cursor || page?.nextCursor) && <div className="appeals-actions">
+        {page.cursor && <button className="appeals-button appeals-secondary" disabled={loading || sending}
+          onClick={() => void loadQueue()}>К началу очереди</button>}
+        {page.nextCursor && <button className="appeals-button appeals-secondary" disabled={loading || sending}
+          onClick={() => void loadQueue(false, page.nextCursor)}>Следующая страница</button>}
+      </div>}
     </section>
   </div>;
 }

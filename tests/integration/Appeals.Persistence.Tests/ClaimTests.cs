@@ -15,6 +15,33 @@ public partial class StorageTests
         return await db.Appeals.AsNoTracking().SingleAsync(x => x.TournamentId == seed.TournamentId);
     }
     [Fact]
+    public async Task Registered_queue_uses_a_tournament_scoped_cursor_for_equal_submission_times()
+    {
+        var seed = await NewAppeal();
+        await using var db = fixture.Open();
+        var timestamp = DateTimeOffset.UtcNow.AddMinutes(-1);
+        for (var index = 0; index < 51; index++)
+            db.Appeals.Add(new() { AppealId = Guid.NewGuid(), TournamentId = seed.TournamentId, TeamId = Guid.NewGuid(),
+                TaskId = seed.TaskId, ResultId = Guid.NewGuid(), ExpectedResultVersion = 1, SolutionId = Guid.NewGuid(),
+                MaterialVersionId = Guid.NewGuid(), BaseCheckId = Guid.NewGuid(), BasePublicationId = Guid.NewGuid(),
+                WindowVersion = 1, SubmittedAt = timestamp });
+        await db.SaveChangesAsync();
+        var work = new AppealWork(db);
+        var actor = new AppealActor(Guid.NewGuid(), ["Jury"], [seed.TournamentId], null);
+        using var first = JsonDocument.Parse((await work.ListAsync(actor, seed.TournamentId, false, default)).Json);
+        var cursor = first.RootElement.GetProperty("nextCursor").GetString()!;
+        var firstIds = first.RootElement.GetProperty("items").EnumerateArray().Select(x => x.GetProperty("appealId").GetGuid()).ToArray();
+        Assert.Equal(50, firstIds.Length);
+        using var second = JsonDocument.Parse((await work.ListAsync(actor, seed.TournamentId, false, default, cursor)).Json);
+        Assert.False(second.RootElement.TryGetProperty("nextCursor", out _));
+        var last = Assert.Single(second.RootElement.GetProperty("items").EnumerateArray()).GetProperty("appealId").GetGuid();
+        Assert.DoesNotContain(last, firstIds);
+        var other = Guid.NewGuid();
+        var otherActor = new AppealActor(actor.SubjectId, ["Jury"], [other], null);
+        Assert.Equal(400, (await Assert.ThrowsAsync<AppealOperationException>(() =>
+            work.ListAsync(otherActor, other, false, default, cursor))).Status);
+    }
+    [Fact]
     public async Task Registered_is_visible_before_manual_claim_202_is_pending_and_replay_precedes_stale_ETag_after_end()
     {
         var row = await RegisteredAppeal(); var actor = new AppealActor(Guid.NewGuid(), ["Jury"], [row.TournamentId], null);

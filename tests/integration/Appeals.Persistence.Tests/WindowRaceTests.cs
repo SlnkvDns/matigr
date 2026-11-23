@@ -11,7 +11,8 @@ public partial class StorageTests
     {
         public TaskCompletionSource Entered = new(TaskCreationOptions.RunContinuationsAsynchronously);
         public TaskCompletionSource Release = new(TaskCreationOptions.RunContinuationsAsynchronously);
-        private static bool Window(DbCommand c) => c.CommandText.Contains("submission_windows", StringComparison.Ordinal) && c.CommandText.Contains("FOR UPDATE", StringComparison.Ordinal);
+        private static bool Window(DbCommand c) => c.CommandText.Contains("submission_windows", StringComparison.Ordinal)
+            && (c.CommandText.Contains("FOR UPDATE", StringComparison.Ordinal) || c.CommandText.Contains("FOR SHARE", StringComparison.Ordinal));
         public override ValueTask<InterceptionResult<DbDataReader>> ReaderExecutingAsync(DbCommand command, CommandEventData data, InterceptionResult<DbDataReader> result, CancellationToken ct = default)
         { if (!hold && Window(command)) Entered.TrySetResult(); return ValueTask.FromResult(result); }
         public override async ValueTask<DbDataReader> ReaderExecutedAsync(DbCommand command, CommandExecutedEventData data, DbDataReader result, CancellationToken ct = default)
@@ -42,5 +43,31 @@ public partial class StorageTests
         Assert.Equal(submitWins ? 1 : 0, await verify.Appeals.CountAsync(x => x.TournamentId == seed.TournamentId));
         if (submitWins) Assert.Equal(201, (await Submit(verify)).Status);
         Assert.Equal(200, (await End(verify)).Status);
+    }
+
+    [Fact]
+    public async Task Different_teams_can_submit_while_another_submission_holds_the_window_lock()
+    {
+        var seed = await NewAppeal();
+        var gate = new WindowGate(true);
+        var options = new DbContextOptionsBuilder<AppealsDbContext>().UseNpgsql(fixture.Connection).AddInterceptors(gate).Options;
+        await using var first = new AppealsDbContext(options);
+        await using var second = fixture.Open();
+        var firstBasis = Published(seed);
+        var secondBasis = firstBasis with { ResultId = Guid.NewGuid(), TeamId = Guid.NewGuid() };
+        var firstActor = new AppealActor(Guid.NewGuid(), ["Team"], [seed.TournamentId], firstBasis.TeamId);
+        var secondActor = new AppealActor(Guid.NewGuid(), ["Team"], [seed.TournamentId], secondBasis.TeamId);
+        var waiting = new AppealSubmission(first, new BasisReader(first, firstBasis))
+            .SubmitAsync(firstActor, firstBasis.ResultId, 1, "submit", default);
+        await gate.Entered.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        try
+        {
+            using var limit = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+            var submitted = await new AppealSubmission(second, new BasisReader(second, secondBasis))
+                .SubmitAsync(secondActor, secondBasis.ResultId, 1, "submit", limit.Token);
+            Assert.Equal(201, submitted.Status);
+        }
+        finally { gate.Release.TrySetResult(); }
+        Assert.Equal(201, (await waiting).Status);
     }
 }

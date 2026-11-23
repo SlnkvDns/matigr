@@ -26,11 +26,11 @@ const appealsApi = cfg.services['appeals-api'];
 const resultsApi = cfg.services['results-api'];
 assert.deepEqual(Object.keys(resultsApi.networks), ['results-data', 'transport']);
 assert.deepEqual(resultsApi.secrets.map(s => s.source).sort(),
-  ['results_db_password', 'results_broker_password', 'dev_issuer_public', 'appeals_results_public'].sort());
+  ['results_runtime_password', 'results_broker_password', 'dev_issuer_public', 'appeals_results_public'].sort());
 assert.ok(resultsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
 assert.deepEqual(Object.keys(appealsApi.networks), ['appeals-data', 'transport']);
 assert.deepEqual(appealsApi.secrets.map(s => s.source).sort(),
-  ['appeals_db_password', 'appeals_results_private', 'dev_issuer_public', 'appeals_broker_password'].sort());
+  ['appeals_runtime_password', 'appeals_results_private', 'dev_issuer_public', 'appeals_broker_password'].sort());
 assert.ok(appealsApi.volumes.some(v => v.target === '/fixtures' && v.read_only));
 for (const [service, settings] of [
   ['checking-api', ['Identity__PublicKeyPath', 'DevIdentity__PrivateKeyPath', 'StorageProtection__KeyPath']],
@@ -48,16 +48,28 @@ for (const [service, settings] of [
 }
 for (const service of ['checking', 'results', 'appeals']) {
   const db = cfg.services[`${service}-db`];
+  const api = cfg.services[`${service}-api`];
+  const migrate = cfg.services[`${service}-migrate`];
+  assert.equal(api.environment.Storage__ApplyMigrations, 'false');
+  assert.equal(api.depends_on[`${service}-migrate`].condition, 'service_completed_successfully');
+  assert.ok(api.secrets.some(s => s.source === `${service}_runtime_password`));
+  assert.ok(!api.secrets.some(s => s.source === `${service}_db_password`));
+  assert.deepEqual(Object.keys(migrate.networks), [`${service}-data`]);
+  assert.equal(migrate.ports, undefined);
   assert.deepEqual(Object.keys(db.networks), [`${service}-data`]);
   assert.equal(db.ports, undefined);
   assert.equal(db.volumes[0].source, `${service}-data`);
   for (const identity of ['checking', 'results', 'appeals']) {
-    const password = await readFile(path.join(root, `.local/secrets/${identity}_db_password`), 'utf8');
+    const password = await readFile(path.join(root, `.local/secrets/${identity}_runtime_password`), 'utf8');
     const result = run(['exec', '-T', `${service}-db`, 'sh', '-c',
-      `read -r PGPASSWORD; export PGPASSWORD; exec psql -h 127.0.0.1 -U ${identity}_app -d ${service}_db -Atc 'SELECT current_database()'`], password + '\n');
+      `read -r PGPASSWORD; export PGPASSWORD; exec psql -h 127.0.0.1 -U ${identity}_runtime -d ${service}_db -Atc "$1"`, 'role-check',
+      `SELECT current_database(), rolsuper, rolcreaterole, rolcreatedb, rolreplication, rolbypassrls,
+              has_schema_privilege(current_user, 'public', 'CREATE'),
+              has_table_privilege(current_user, 'public."__EFMigrationsHistory"', 'INSERT')
+       FROM pg_roles WHERE rolname = current_user`], password + '\n');
     if (identity === service) {
       assert.equal(result.status, 0, `Own credentials failed for ${service}`);
-      assert.equal(result.stdout.trim(), `${service}_db`);
+      assert.equal(result.stdout.trim(), `${service}_db|f|f|f|f|f|f|f`);
     } else {
       assert.notEqual(result.status, 0, `Cross-service credentials succeeded: ${identity} -> ${service}`);
       assert.match(result.stderr, /authentication failed/);

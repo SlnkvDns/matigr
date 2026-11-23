@@ -17,7 +17,7 @@ export function appealName(item: AppealSummary, standings: Standings | undefined
   return `${name ? `Команда «${name}»` : `Команда ${item.teamId}`} · ${taskName(item, standings)}`;
 }
 const record = (v: unknown): v is Record<string, unknown> => v !== null && typeof v === 'object' && !Array.isArray(v);
-const text = (v: unknown) => typeof v === 'string' && v.length > 0;
+const text = (v: unknown): v is string => typeof v === 'string' && v.length > 0;
 const fields = ['appealId', 'tournamentId', 'teamId', 'taskId', 'state', 'submittedAt', 'version'];
 function summary(v: unknown, tournament: string): v is AppealSummary & Record<string, unknown> {
   return record(v) && v.tournamentId === tournament && ['appealId', 'teamId', 'taskId'].every(k => text(v[k]))
@@ -36,6 +36,12 @@ export function readList(v: unknown, tournament: string, team?: string): AppealS
     || !v.items.every(i => summary(i, tournament) && Object.keys(i).every(k => fields.includes(k)) && (team === undefined || i.teamId === team))
     || new Set(v.items.map(i => i.appealId)).size !== v.items.length) throw new ApiProtocolError();
   return v.items as AppealSummary[];
+}
+export function readQueue(v: unknown, tournament: string) {
+  if (!record(v)) throw new ApiProtocolError();
+  const { nextCursor, ...list } = v;
+  if (nextCursor !== undefined && (!text(nextCursor) || nextCursor.length > 256)) throw new ApiProtocolError();
+  return { items: readList(list, tournament), nextCursor };
 }
 export function scheduleAppealRefresh(refresh: () => Promise<void> | undefined, initialRead?: Promise<void>): () => void {
   let stopped = false;

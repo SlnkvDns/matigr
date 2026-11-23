@@ -11,7 +11,8 @@ public static class StandingsEvents
     public static void MapStandingsEvents(this WebApplication app) =>
         app.MapMethods("/api/v1/results/tournaments/{tournamentId}/standings/events", ["GET", "CONNECT"], StreamAsync);
 
-    private static async Task StreamAsync(string tournamentId, HttpContext context, StandingsCache cache, IHostApplicationLifetime lifetime)
+    private static async Task StreamAsync(string tournamentId, HttpContext context, StandingsCache cache, IHostApplicationLifetime lifetime,
+        StandingsConnectionLimits limits)
     {
         context.Response.Headers.CacheControl = "no-store";
         if (!Guid.TryParse(tournamentId, out var tournament))
@@ -22,6 +23,14 @@ public static class StandingsEvents
         if (!context.WebSockets.IsWebSocketRequest)
         {
             await Error(context, 400, "WebSocketRequired");
+            return;
+        }
+        using var attempt = limits.AttemptConnection();
+        using var connection = attempt.IsAcquired ? limits.AcquireConnection() : null;
+        if (connection?.IsAcquired != true)
+        {
+            context.Response.Headers.RetryAfter = "1";
+            await Error(context, 429, "StandingsConnectionLimit");
             return;
         }
         using var stop = CancellationTokenSource.CreateLinkedTokenSource(context.RequestAborted, lifetime.ApplicationStopping);

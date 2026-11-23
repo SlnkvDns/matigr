@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Hosting;
@@ -32,10 +33,19 @@ internal sealed class StandingsNotifications(IConfiguration configuration, Stand
                 await cache.ReconcileAsync(stoppingToken);
                 while (!stoppingToken.IsCancellationRequested)
                 {
+                    if (!await connection.WaitAsync(30_000, stoppingToken))
+                    {
+                        await cache.ReconcileAsync(stoppingToken);
+                        continue;
+                    }
+                    // Coalesce a short burst per tournament without delaying a continuously busy stream indefinitely.
+                    var started = Stopwatch.GetTimestamp();
+                    var remaining = 50d;
+                    while (remaining > 0 && await connection.WaitAsync(Math.Max(1, (int)remaining), stoppingToken))
+                        remaining = 50 - Stopwatch.GetElapsedTime(started).TotalMilliseconds;
                     foreach (var (tournament, version) in pending)
                         await cache.RefreshSubscribersAsync(tournament, version, stoppingToken);
                     pending.Clear();
-                    if (!await connection.WaitAsync(30_000, stoppingToken)) await cache.ReconcileAsync(stoppingToken);
                 }
             }
             catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested) { break; }

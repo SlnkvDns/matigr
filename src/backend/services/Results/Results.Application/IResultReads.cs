@@ -13,9 +13,15 @@ public sealed record PublishedAppealBasis(string ResultId, string ResultVersion,
     string PublicationId, string PublishedAt, string PublicationState = "Published");
 public sealed class ResultReadException(int status, string code) : Exception(code)
 { public int Status { get; } = status; public string Code { get; } = code; }
-public interface IResultReads
+public interface IStandingsSource
 {
     Task<StandingsSnapshot> StandingsAsync(Guid tournament, CancellationToken ct);
+}
+public interface ITeamResults
+{
     Task<MyTournamentResults> TeamAsync(Guid tournament, Guid team, CancellationToken ct);
+}
+public interface IPublishedAppealBases
+{
     Task<PublishedAppealBasis> BasisAsync(Guid result, long expectedVersion, CancellationToken ct);
 }
